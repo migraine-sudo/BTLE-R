@@ -70,6 +70,8 @@ To run the flow graph in GNURadioCompanion or run the python script ble_decode.p
 $ python3 ble_decode.py
 ```
 
+![BLE_ADV_Capture](./pic/BLE_ADV_Capture.png)
+
 # Doc
 
 ![GRC-Sniffer](./pic/GRC-Sniffer.png)
