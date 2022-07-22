@@ -1,0 +1,679 @@
+options:
+  parameters:
+    author: migriane
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: qt_gui
+    hier_block_src_path: '.:'
+    id: ble_decode
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: Not titled yet
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: freq_channel
+  id: variable
+  parameters:
+    comment: ''
+    value: 2.402e9
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [296, 12.0]
+    rotation: 0
+    state: true
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 4e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [184, 12]
+    rotation: 0
+    state: enabled
+- name: blocks_throttle_0
+  id: blocks_throttle
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ignoretag: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: samp_rate
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [312, 244.0]
+    rotation: 0
+    state: true
+- name: digital_gfsk_demod_0
+  id: digital_gfsk_demod
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    freq_error: '0.0'
+    gain_mu: '0.175'
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mu: '0.5'
+    omega_relative_limit: '0.005'
+    samples_per_symbol: '4'
+    sensitivity: '0.392699'
+    verbose: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [456, 208.0]
+    rotation: 0
+    state: true
+- name: epy_block_0
+  id: epy_block
+  parameters:
+    AA: '''0x8E89BED6'''
+    _source_code: "\"\"\"\nBLE_Packets_Gain Block\n\nThe input data comes from GFSKDemod,\
+      \ which captures BLE air packets according to PREAMBLE and AccessAddress. \n\
+      According to the longest value of BLE Packets, forward the data to the next\
+      \ module for processing. \n\nKey1: Not descrambled, not calculated PDU length\n\
+      Key2: Since the output length of GFSKDemod is 1024 each time, some packets may\
+      \ be truncated,\n      and the module will choose to discard these packets.\n\
+      \nParam1: Access Address , ADV (0x8E89BED6) Default\n\n\"\"\"\n\nfrom re import\
+      \ L\nfrom struct import pack\nimport numpy as np\nfrom gnuradio import gr\n\
+      from array import array\nimport pmt\n\n\nclass blk(gr.sync_block):  # other\
+      \ base classes are basic_block, decim_block, interp_block\n    \"\"\" BLE_Packets_Gain\
+      \ Block \"\"\"\n\n    def __init__(self, AA = \"0x8E89BED6\"):  # only default\
+      \ arguments here\n        gr.sync_block.__init__(\n            self,\n     \
+      \       name='BLE PACKET Gain',   # will show up in GRC\n            in_sig=[np.int8],\n\
+      \            out_sig=None\n        )\n        self.message_port_register_out(pmt.intern('msg_out'))\n\
+      \n        # if an attribute with the same name as a parameter is found,\n  \
+      \      # a callback is registered (properties work, too).\n        self.AccessAddress\
+      \ = AA\n        self.last_packets=\"\"\n\n    def work(self, input_items, output_items):\n\
+      \        bits_stream=input_items[0]\n        bits_decode=\"\"\n        for x\
+      \ in bits_stream:  \n            bits_decode+=str(x)\n\n        AA =bin(int(self.AccessAddress,base=16))[2:].zfill(8*4)[::-1]\n\
+      \        PREAMBLE=\"01010101\" # 0xaa reverse\n        PREAMBLE2=\"10101010\"\
+      \ # 0x55 reverse\n        #AA = \"01101011011111011001000101110001\" #Access\
+      \ Address = 0x8E89BED6\n        \n        packet1 = PREAMBLE+AA\n        #packet2\
+      \ = PREAMBLE2+AA\n\n        if packet1 in bits_decode :\n            index =\
+      \ bits_decode.find(packet1)\n            \n            if len(bits_decode) -\
+      \ index >= 47*8:    # Drop packets\n                packets = bits_decode[index:index+47*8]\n\
+      \            else:\n                #print(\"copy failed\")\n              \
+      \  return len(input_items[0])   \n                         \n            if\
+      \ packets[44*8:] == self.last_packets:  # Deduplication according to CRCs\n\
+      \                return len(input_items[0]) \n            else:\n          \
+      \      self.last_packets=packets[44*8:]\n                \n                #\
+      \ Debug Log\n                '''\n                print(\"\\n[\",end='')\n \
+      \               index=0\n                for i in range(0,47):\n           \
+      \         Bytes=[packets[x] for x in range(index,index+4)]\n               \
+      \     Bytes2=[packets[x] for x in range(index+4,index+8)]\n                \
+      \    print(\"0x\"+format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\"\
+      .join(Bytes[::-1]),2),'x'),end=' ') # Bits need reverse\n                  \
+      \  index+=8                \n                print(\"]\")\n                '''\n\
+      \                self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(packets))\n\
+      \                return len(input_items[0])\n        '''\n        \n       \
+      \ if packet2 in bits_decode:\n            index = bits_decode.find(packet2)\n\
+      \            print(\"[\",end='')\n            for i in range(0,47):\n      \
+      \          try:\n                    Bytes=[bits_decode[x] for x in range(index,index+4)]\n\
+      \                    Bytes2=[bits_decode[x] for x in range(index+4,index+8)]\n\
+      \                    print(\"0x\"+format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\
+      \".join(Bytes[::-1]),2),'x'),end=' ') # Bits need reverse\n                except:\n\
+      \                    print(\"decode fail\")\n                    break    \n\
+      \                index+=8\n            print(\"]\")\n        \n        '''\n\
+      \        return len(input_items[0])\n        #return len(output_items[0])\n\
+      \        #output_items[0][:] = input_items[0] * self.example_param\n\n"
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    _io_cache: ('BLE PACKET Gain', 'blk', [('AA', "'0x8E89BED6'")], [('0', 'byte',
+      1)], [('msg_out', 'message', 1)], ' BLE_Packets_Gain Block ', [])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [696, 244.0]
+    rotation: 0
+    state: true
+- name: epy_block_1
+  id: epy_block
+  parameters:
+    CHANNEL: '37'
+    _source_code: "\"\"\"\nWhiltening/De-Whitening Blocks:\n\nInverse whitening of\
+      \ BLE data packets, so that we can parse the PDU format of the link layer then.\n\
+      \nInput data: Message data from BLE_Packets_Gain module\n\"\"\"\n\nimport numpy\
+      \ as np\nfrom gnuradio import gr\nimport pmt\nimport time\n\nclass blk(gr.sync_block):\
+      \  # other base classes are basic_block, decim_block, interp_block\n    \"\"\
+      \"Whiltening Blocks\"\"\"\n\n    def __init__(self, CHANNEL=37):  # only default\
+      \ arguments here\n        \"\"\"arguments to this function show up as parameters\
+      \ in GRC\"\"\"\n        gr.sync_block.__init__(\n            self,\n       \
+      \     name='Whiltening',   # will show up in GRC\n            in_sig=None,\n\
+      \            out_sig=None\n        )\n        self.message_port_register_in(pmt.intern('msg_in'))\n\
+      \        self.set_msg_handler(pmt.intern('msg_in'), self.handle_msg)\n     \
+      \   self.message_port_register_out(pmt.intern('msg_out'))\n        # if an attribute\
+      \ with the same name as a parameter is found,\n        # a callback is registered\
+      \ (properties work, too).\n        self.channel = CHANNEL\n        self.packets_pool=[]\n\
+      \n    def handle_msg(self,msg):\n        packets=pmt.symbol_to_string(msg)\n\
+      \        if packets in self.packets_pool:\n            if len(self.packets_pool)\
+      \ >100:\n                self.packets_pool=[]\n                #print(\"clear\"\
+      )\n            #print(\"pass\")\n            return 0\n        \n        self.packets_pool.append(packets)\n\
+      \        index=0\n        packets_after = self.whitening(self.channel,packets)\n\
+      \        self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(packets_after))\n\
+      \        \"\"\"\n        print(\"[Before Whitening]:\",end='')\n        self.logger(packets)\n\
+      \        print(\"[After   Whitening]:\",end='')\n        self.logger(packets_after)\n\
+      \        \"\"\"\n        time.sleep(0.01)\n        \n\n    def whitening(self,channel,data):\n\
+      \        pre = data[:40]\n        data= data[40:]\n        position=[]\n   \
+      \     register=bin(channel)[2:].zfill(6)\n        #print(register)\n       \
+      \ position.append(1)\n        for i in register:\n            position.append(int(i))\n\
+      \        #print(\"init position:\"+\"\".join([str(x) for x in position]))\n\n\
+      \        sink=[]\n        for x in data:\n            extra = position[6]\n\
+      \            sink.append(extra^int(x))\n            position[6]=position[5]\n\
+      \            position[5]=position[4]\n            position[4]=position[3]^extra\n\
+      \            position[3]=position[2]\n            position[2]=position[1]\n\
+      \            position[1]=position[0]\n            position[0]=extra\n      \
+      \  return pre+\"\".join([str(x) for x in sink])\n\n    def logger(self,data):\n\
+      \        index=0\n        print(\"[\",end='')\n        for i in range(int(len(data)/8)):\n\
+      \                    Bytes=[data[x] for x in range(index,index+4)]\n       \
+      \             Bytes2=[data[x] for x in range(index+4,index+8)]\n           \
+      \         print(format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\".join(Bytes[::-1]),2),'x'),end='')\
+      \ # Bits need reverse\n                    #print(\"0x\"+format(int(\"\".join(Bytes),2),'x')+format(int(\"\
+      \".join(Bytes2),2),'x'),end=' ') \n                    index+=8\n        print(\"\
+      ]\")"
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    _io_cache: ('Whiltening', 'blk', [('CHANNEL', '37')], [('msg_in', 'message', 1)],
+      [('msg_out', 'message', 1)], 'Whiltening Blocks', [])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [928, 244.0]
+    rotation: 0
+    state: true
+- name: epy_block_2
+  id: epy_block
+  parameters:
+    CHANNEL: '37'
+    _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\n\"\"\"\n\nimport numpy as np\n\
+      from gnuradio import gr\nimport pmt\nimport time\n\nclass blk(gr.sync_block):\
+      \  # other base classes are basic_block, decim_block, interp_block\n    \"\"\
+      \"Whiltening Blocks\"\"\"\n\n    def __init__(self, CHANNEL = 37):  # only default\
+      \ arguments here\n        \"\"\"arguments to this function show up as parameters\
+      \ in GRC\"\"\"\n        gr.sync_block.__init__(\n            self,\n       \
+      \     name='BLE PDU Decode',   # will show up in GRC\n            in_sig=None,\n\
+      \            out_sig=None\n        )\n        self.message_port_register_in(pmt.intern('msg_in'))\n\
+      \        self.set_msg_handler(pmt.intern('msg_in'), self.handle_msg)\n     \
+      \   self.message_port_register_out(pmt.intern('msg_out'))\n        # if an attribute\
+      \ with the same name as a parameter is found,\n        # a callback is registered\
+      \ (properties work, too).\n        self.channel = CHANNEL\n        self.output={'Channel':self.channel}\n\
+      \n    def handle_msg(self,msg):\n        packets=pmt.symbol_to_string(msg)\n\
+      \        packet_str = self.bit2str(packets) # Convert the bitstream to a string,\
+      \ modify the bits order\n        \n        len = self.PDU_Len(packet_str)\n\
+      \        packet_str = packet_str[:len*2+20] # minus the excess at the end\n\n\
+      \        # Start Parse PDU\n        self.AA_Gain(packet_str)\n        self.PDU_Payload(packet_str)\n\
+      \        self.PDU_CRC(packet_str)\n        print (\"PACKETS \u2014> [\"+packet_str+\"\
+      ]\")\n        print ('    [CH]:'+str(self.channel),end=' ')\n\n        if self.channel\
+      \ in [37,38,39]:\n            \"\"\"Advertising Physical Channel PDU\"\"\"\n\
+      \            self.PDU_ADV_Parse(packet_str) ## Parse Header\n            try:\n\
+      \                print (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end='\
+      \ ')\n                print (\"    [ChSel] : \"+self.PDU_CHSEL[self.output['ChSel']],end='\
+      \ ')\n                print (\"    [TxAdd] : \"+self.PDU_Add[self.output['TxAdd']],end='\
+      \ ')\n                print (\"    [RxAdd] : \"+self.PDU_Add[self.output['RxAdd']])\n\
+      \            except:\n                print(\"Invaild PDU Header\")\n      \
+      \  else:\n            \"\"\"Data Physical Channel PDU\"\"\"\n            print(\"\
+      Data Physical Channel PDU\")\n        \n        print (\"    [PAYLOAD] : [\"\
+      +self.output['payload']+\"]\",end='')\n        print (\"    [LEN : \"+str(len),end='')\n\
+      \        print (\"    , CRC : \"+self.output['crc']+\"]\\n\")\n\n        self.message_port_pub(pmt.intern(\"\
+      msg_out\"),pmt.intern(str(self.output)))\n\n    '''\n    PDU Help Dict\n   \
+      \ '''\n    PDU_Type={\n            '0000':'ADV_IND',\n            '0001':'ADV_DIRECT_IND',\n\
+      \            '0010':'ADV_NONCONN_IND',\n            '0011':'SCAN_REQ',\n   \
+      \         '0100':'SCAN_RES',\n            '0101':'CONNECT_IND',\n          \
+      \  '0110':'ADV_SCAN_IND',\n            '0111':'ADV_EXT_IND',\n            '1000':'AUX_CONNECT_RSP'\n\
+      \        }\n    PDU_Add={\n            '0':'Public',\n            '1':'Random'\n\
+      \        }\n    PDU_CHSEL={\n            '0':'#1',\n            '1':'#2'\n \
+      \       }\n        \n    '''\n    Bits to String\n    Reverse the byte order\
+      \ of the bit stream and convert it to string format\n    The endianness is the\
+      \ same as wireshark shows.\n    '''\n    def bit2str(self,data):\n        str=\"\
+      \"\n        index=0\n        for i in range(int(len(data)/8)):\n           \
+      \ Bytes=[data[x] for x in range(index,index+4)]\n            Bytes2=[data[x]\
+      \ for x in range(index+4,index+8)]\n            str+=format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\
+      \".join(Bytes[::-1]),2),'x') # Bits need reverse\n            index+=8\n   \
+      \     return str\n\n    \"\"\"\n    Access Address Gain\n    \"\"\"\n    def\
+      \ AA_Gain(self,data):\n        data_lsb = data[2:10]\n        aa = self.lsb2value(data_lsb)\n\
+      \        #for i in range(4): \n        #    aa += data_lsb[(3-i)*2]+data_lsb[(3-i)*2+1]\n\
+      \        self.output['AA']=aa\n        #return aa\n\n    '''\n    PDU payload\
+      \ len Gain\n    '''\n    def PDU_Len(self,data):\n        #data_lsb = data[10:12]\n\
+      \        data_lsb = data[12:14]\n        pdu_len = self.lsb2value(data_lsb)\n\
+      \        return int(pdu_len,base=16)\n\n    '''\n    PDU Type && RFU && ChSel\
+      \ && TxAdd && RxAdd\n    '''\n    def PDU_ADV_Parse(self,data):\n        data_lsb\
+      \ = data[10:12]\n        pdu_type = bin(int(data_lsb[1],base=16))[2:].zfill(4)\n\
+      \        bits = bin(int(data_lsb[0],base=16))[2:].zfill(4)[::-1]  #fix endianness\n\
+      \        pdu_rfu = bits[0]\n        pdu_ChSel = bits[1]\n        pdu_TxAdd =\
+      \ bits[2]\n        pdu_RxAdd = bits[3]\n        ## Return\n        self.output['type']=pdu_type\
+      \ \n        self.output['rfu']=pdu_rfu\n        self.output['ChSel']=pdu_ChSel\n\
+      \        self.output['TxAdd']=pdu_TxAdd\n        self.output['RxAdd']=pdu_RxAdd\n\
+      \n        \n    def PDU_Payload(self,data):\n        self.output['payload']=data[14:-6]\
+      \ \n\n    '''\n    PDU CRC Gain\n    '''\n    def PDU_CRC(self,data):\n    \
+      \    crc = data[-6:]\n        crc_re=\"\"\n        #for i in range(len(crc)):\
+      \       \n            #crc_re+=hex(int(bin(int(crc[i],base=16))[2:].zfill(4)[::-1],2))[2:]\n\
+      \        #print(crc)\n        for i in range(3):\n            crc_re+=crc[(2-i)*2]+crc[(2-i)*2+1]\n\
+      \        self.output['crc'] =\"0x\" + crc_re\n\n    '''\n    Parse the little-endian\
+      \ data byte sequence to get the real value of this field\n    (provided that\
+      \ the metadata comes from bit2str)\n    '''\n    def lsb2value(self,data):\n\
+      \        length = int(len(data)/2)\n        str=\"\"\n        for i in range(length):\
+      \ \n            str += data[(length-1-i)*2]+data[(length-1-i)*2+1]\n       \
+      \ return str"
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    _io_cache: ('BLE PDU Decode', 'blk', [('CHANNEL', '37')], [('msg_in', 'message',
+      1)], [('msg_out', 'message', 1)], 'Whiltening Blocks', [])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [704, 332.0]
+    rotation: 0
+    state: true
+- name: osmosdr_source_0
+  id: osmosdr_source
+  parameters:
+    affinity: ''
+    alias: ''
+    ant0: ''
+    ant1: ''
+    ant10: ''
+    ant11: ''
+    ant12: ''
+    ant13: ''
+    ant14: ''
+    ant15: ''
+    ant16: ''
+    ant17: ''
+    ant18: ''
+    ant19: ''
+    ant2: ''
+    ant20: ''
+    ant21: ''
+    ant22: ''
+    ant23: ''
+    ant24: ''
+    ant25: ''
+    ant26: ''
+    ant27: ''
+    ant28: ''
+    ant29: ''
+    ant3: ''
+    ant30: ''
+    ant31: ''
+    ant4: ''
+    ant5: ''
+    ant6: ''
+    ant7: ''
+    ant8: ''
+    ant9: ''
+    args: '""'
+    bb_gain0: '20'
+    bb_gain1: '20'
+    bb_gain10: '20'
+    bb_gain11: '20'
+    bb_gain12: '20'
+    bb_gain13: '20'
+    bb_gain14: '20'
+    bb_gain15: '20'
+    bb_gain16: '20'
+    bb_gain17: '20'
+    bb_gain18: '20'
+    bb_gain19: '20'
+    bb_gain2: '20'
+    bb_gain20: '20'
+    bb_gain21: '20'
+    bb_gain22: '20'
+    bb_gain23: '20'
+    bb_gain24: '20'
+    bb_gain25: '20'
+    bb_gain26: '20'
+    bb_gain27: '20'
+    bb_gain28: '20'
+    bb_gain29: '20'
+    bb_gain3: '20'
+    bb_gain30: '20'
+    bb_gain31: '20'
+    bb_gain4: '20'
+    bb_gain5: '20'
+    bb_gain6: '20'
+    bb_gain7: '20'
+    bb_gain8: '20'
+    bb_gain9: '20'
+    bw0: 2e6
+    bw1: '0'
+    bw10: '0'
+    bw11: '0'
+    bw12: '0'
+    bw13: '0'
+    bw14: '0'
+    bw15: '0'
+    bw16: '0'
+    bw17: '0'
+    bw18: '0'
+    bw19: '0'
+    bw2: '0'
+    bw20: '0'
+    bw21: '0'
+    bw22: '0'
+    bw23: '0'
+    bw24: '0'
+    bw25: '0'
+    bw26: '0'
+    bw27: '0'
+    bw28: '0'
+    bw29: '0'
+    bw3: '0'
+    bw30: '0'
+    bw31: '0'
+    bw4: '0'
+    bw5: '0'
+    bw6: '0'
+    bw7: '0'
+    bw8: '0'
+    bw9: '0'
+    clock_source0: ''
+    clock_source1: ''
+    clock_source2: ''
+    clock_source3: ''
+    clock_source4: ''
+    clock_source5: ''
+    clock_source6: ''
+    clock_source7: ''
+    comment: ''
+    corr0: '0'
+    corr1: '0'
+    corr10: '0'
+    corr11: '0'
+    corr12: '0'
+    corr13: '0'
+    corr14: '0'
+    corr15: '0'
+    corr16: '0'
+    corr17: '0'
+    corr18: '0'
+    corr19: '0'
+    corr2: '0'
+    corr20: '0'
+    corr21: '0'
+    corr22: '0'
+    corr23: '0'
+    corr24: '0'
+    corr25: '0'
+    corr26: '0'
+    corr27: '0'
+    corr28: '0'
+    corr29: '0'
+    corr3: '0'
+    corr30: '0'
+    corr31: '0'
+    corr4: '0'
+    corr5: '0'
+    corr6: '0'
+    corr7: '0'
+    corr8: '0'
+    corr9: '0'
+    dc_offset_mode0: '0'
+    dc_offset_mode1: '0'
+    dc_offset_mode10: '0'
+    dc_offset_mode11: '0'
+    dc_offset_mode12: '0'
+    dc_offset_mode13: '0'
+    dc_offset_mode14: '0'
+    dc_offset_mode15: '0'
+    dc_offset_mode16: '0'
+    dc_offset_mode17: '0'
+    dc_offset_mode18: '0'
+    dc_offset_mode19: '0'
+    dc_offset_mode2: '0'
+    dc_offset_mode20: '0'
+    dc_offset_mode21: '0'
+    dc_offset_mode22: '0'
+    dc_offset_mode23: '0'
+    dc_offset_mode24: '0'
+    dc_offset_mode25: '0'
+    dc_offset_mode26: '0'
+    dc_offset_mode27: '0'
+    dc_offset_mode28: '0'
+    dc_offset_mode29: '0'
+    dc_offset_mode3: '0'
+    dc_offset_mode30: '0'
+    dc_offset_mode31: '0'
+    dc_offset_mode4: '0'
+    dc_offset_mode5: '0'
+    dc_offset_mode6: '0'
+    dc_offset_mode7: '0'
+    dc_offset_mode8: '0'
+    dc_offset_mode9: '0'
+    freq0: freq_channel
+    freq1: 100e6
+    freq10: 100e6
+    freq11: 100e6
+    freq12: 100e6
+    freq13: 100e6
+    freq14: 100e6
+    freq15: 100e6
+    freq16: 100e6
+    freq17: 100e6
+    freq18: 100e6
+    freq19: 100e6
+    freq2: 100e6
+    freq20: 100e6
+    freq21: 100e6
+    freq22: 100e6
+    freq23: 100e6
+    freq24: 100e6
+    freq25: 100e6
+    freq26: 100e6
+    freq27: 100e6
+    freq28: 100e6
+    freq29: 100e6
+    freq3: 100e6
+    freq30: 100e6
+    freq31: 100e6
+    freq4: 100e6
+    freq5: 100e6
+    freq6: 100e6
+    freq7: 100e6
+    freq8: 100e6
+    freq9: 100e6
+    gain0: '10'
+    gain1: '10'
+    gain10: '10'
+    gain11: '10'
+    gain12: '10'
+    gain13: '10'
+    gain14: '10'
+    gain15: '10'
+    gain16: '10'
+    gain17: '10'
+    gain18: '10'
+    gain19: '10'
+    gain2: '10'
+    gain20: '10'
+    gain21: '10'
+    gain22: '10'
+    gain23: '10'
+    gain24: '10'
+    gain25: '10'
+    gain26: '10'
+    gain27: '10'
+    gain28: '10'
+    gain29: '10'
+    gain3: '10'
+    gain30: '10'
+    gain31: '10'
+    gain4: '10'
+    gain5: '10'
+    gain6: '10'
+    gain7: '10'
+    gain8: '10'
+    gain9: '10'
+    gain_mode0: 'True'
+    gain_mode1: 'False'
+    gain_mode10: 'False'
+    gain_mode11: 'False'
+    gain_mode12: 'False'
+    gain_mode13: 'False'
+    gain_mode14: 'False'
+    gain_mode15: 'False'
+    gain_mode16: 'False'
+    gain_mode17: 'False'
+    gain_mode18: 'False'
+    gain_mode19: 'False'
+    gain_mode2: 'False'
+    gain_mode20: 'False'
+    gain_mode21: 'False'
+    gain_mode22: 'False'
+    gain_mode23: 'False'
+    gain_mode24: 'False'
+    gain_mode25: 'False'
+    gain_mode26: 'False'
+    gain_mode27: 'False'
+    gain_mode28: 'False'
+    gain_mode29: 'False'
+    gain_mode3: 'False'
+    gain_mode30: 'False'
+    gain_mode31: 'False'
+    gain_mode4: 'False'
+    gain_mode5: 'False'
+    gain_mode6: 'False'
+    gain_mode7: 'False'
+    gain_mode8: 'False'
+    gain_mode9: 'False'
+    if_gain0: '20'
+    if_gain1: '20'
+    if_gain10: '20'
+    if_gain11: '20'
+    if_gain12: '20'
+    if_gain13: '20'
+    if_gain14: '20'
+    if_gain15: '20'
+    if_gain16: '20'
+    if_gain17: '20'
+    if_gain18: '20'
+    if_gain19: '20'
+    if_gain2: '20'
+    if_gain20: '20'
+    if_gain21: '20'
+    if_gain22: '20'
+    if_gain23: '20'
+    if_gain24: '20'
+    if_gain25: '20'
+    if_gain26: '20'
+    if_gain27: '20'
+    if_gain28: '20'
+    if_gain29: '20'
+    if_gain3: '20'
+    if_gain30: '20'
+    if_gain31: '20'
+    if_gain4: '20'
+    if_gain5: '20'
+    if_gain6: '20'
+    if_gain7: '20'
+    if_gain8: '20'
+    if_gain9: '20'
+    iq_balance_mode0: '0'
+    iq_balance_mode1: '0'
+    iq_balance_mode10: '0'
+    iq_balance_mode11: '0'
+    iq_balance_mode12: '0'
+    iq_balance_mode13: '0'
+    iq_balance_mode14: '0'
+    iq_balance_mode15: '0'
+    iq_balance_mode16: '0'
+    iq_balance_mode17: '0'
+    iq_balance_mode18: '0'
+    iq_balance_mode19: '0'
+    iq_balance_mode2: '0'
+    iq_balance_mode20: '0'
+    iq_balance_mode21: '0'
+    iq_balance_mode22: '0'
+    iq_balance_mode23: '0'
+    iq_balance_mode24: '0'
+    iq_balance_mode25: '0'
+    iq_balance_mode26: '0'
+    iq_balance_mode27: '0'
+    iq_balance_mode28: '0'
+    iq_balance_mode29: '0'
+    iq_balance_mode3: '0'
+    iq_balance_mode30: '0'
+    iq_balance_mode31: '0'
+    iq_balance_mode4: '0'
+    iq_balance_mode5: '0'
+    iq_balance_mode6: '0'
+    iq_balance_mode7: '0'
+    iq_balance_mode8: '0'
+    iq_balance_mode9: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nchan: '1'
+    num_mboards: '1'
+    sample_rate: samp_rate
+    sync: sync
+    time_source0: ''
+    time_source1: ''
+    time_source2: ''
+    time_source3: ''
+    time_source4: ''
+    time_source5: ''
+    time_source6: ''
+    time_source7: ''
+    type: fc32
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [80, 168.0]
+    rotation: 0
+    state: true
+
+connections:
+- [blocks_throttle_0, '0', digital_gfsk_demod_0, '0']
+- [digital_gfsk_demod_0, '0', epy_block_0, '0']
+- [epy_block_0, msg_out, epy_block_1, msg_in]
+- [epy_block_1, msg_out, epy_block_2, msg_in]
+- [osmosdr_source_0, '0', blocks_throttle_0, '0']
+
+metadata:
+  file_format: 1
