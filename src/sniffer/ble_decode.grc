@@ -8,7 +8,7 @@ options:
     description: ''
     gen_cmake: 'On'
     gen_linking: dynamic
-    generate_options: qt_gui
+    generate_options: no_gui
     hier_block_src_path: '.:'
     id: ble_decode
     max_nouts: '0'
@@ -18,7 +18,7 @@ options:
     realtime_scheduling: ''
     run: 'True'
     run_command: '{python} -u {filename}'
-    run_options: prompt
+    run_options: run
     sizing_mode: fixed
     thread_safe_setters: ''
     title: Not titled yet
@@ -162,7 +162,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [696, 244.0]
+    coordinate: [656, 244.0]
     rotation: 0
     state: true
 - name: epy_block_1
@@ -220,7 +220,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [928, 244.0]
+    coordinate: [888, 244.0]
     rotation: 0
     state: true
 - name: epy_block_2
@@ -228,7 +228,7 @@ blocks:
   parameters:
     CHANNEL: '37'
     _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\n\"\"\"\n\nimport numpy as np\n\
-      from gnuradio import gr\nimport pmt\nimport time\n\nclass blk(gr.sync_block):\
+      from gnuradio import gr\nimport pmt\nimport time\nimport binascii\n\nclass blk(gr.sync_block):\
       \  # other base classes are basic_block, decim_block, interp_block\n    \"\"\
       \"Whiltening Blocks\"\"\"\n\n    def __init__(self, CHANNEL = 37):  # only default\
       \ arguments here\n        \"\"\"arguments to this function show up as parameters\
@@ -244,36 +244,41 @@ blocks:
       \ modify the bits order\n        \n        len = self.PDU_Len(packet_str)\n\
       \        packet_str = packet_str[:len*2+20] # minus the excess at the end\n\n\
       \        # Start Parse PDU\n        self.AA_Gain(packet_str)\n        self.PDU_Payload(packet_str)\n\
-      \        self.PDU_CRC(packet_str)\n        print (\"PACKETS \u2014> [\"+packet_str+\"\
-      ]\")\n        print ('    [CH]:'+str(self.channel),end=' ')\n\n        if self.channel\
-      \ in [37,38,39]:\n            \"\"\"Advertising Physical Channel PDU\"\"\"\n\
-      \            self.PDU_ADV_Parse(packet_str) ## Parse Header\n            try:\n\
-      \                print (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end='\
-      \ ')\n                print (\"    [ChSel] : \"+self.PDU_CHSEL[self.output['ChSel']],end='\
+      \        self.PDU_CRC(packet_str)\n\n        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'])\
+      \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n        if crc_ca !=int(self.output['crc'],base=16):\n\
+      \            print(\"[LOG] Drop packets [CRC wrong]\\n\")\n            return\
+      \ 0\n        '''\n        LOG\n        '''\n        print (\"PACKETS \u2014\
+      > [\"+packet_str+\"]\")\n        print ('    [CH]:'+str(self.channel),end='\
+      \ ')\n\n        if self.channel in [37,38,39]:\n            \"\"\"Advertising\
+      \ Physical Channel PDU\"\"\"\n            self.PDU_ADV_Parse(packet_str) ##\
+      \ Parse Header\n            '''Log'''\n            try:\n                print\
+      \ (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end=' ')\n        \
+      \        print (\"    [ChSel] : \"+self.PDU_CHSEL[self.output['ChSel']],end='\
       \ ')\n                print (\"    [TxAdd] : \"+self.PDU_Add[self.output['TxAdd']],end='\
       \ ')\n                print (\"    [RxAdd] : \"+self.PDU_Add[self.output['RxAdd']])\n\
       \            except:\n                print(\"Invaild PDU Header\")\n      \
       \  else:\n            \"\"\"Data Physical Channel PDU\"\"\"\n            print(\"\
       Data Physical Channel PDU\")\n        \n        print (\"    [PAYLOAD] : [\"\
       +self.output['payload']+\"]\",end='')\n        print (\"    [LEN : \"+str(len),end='')\n\
-      \        print (\"    , CRC : \"+self.output['crc']+\"]\\n\")\n\n        self.message_port_pub(pmt.intern(\"\
-      msg_out\"),pmt.intern(str(self.output)))\n\n    '''\n    PDU Help Dict\n   \
-      \ '''\n    PDU_Type={\n            '0000':'ADV_IND',\n            '0001':'ADV_DIRECT_IND',\n\
-      \            '0010':'ADV_NONCONN_IND',\n            '0011':'SCAN_REQ',\n   \
-      \         '0100':'SCAN_RES',\n            '0101':'CONNECT_IND',\n          \
-      \  '0110':'ADV_SCAN_IND',\n            '0111':'ADV_EXT_IND',\n            '1000':'AUX_CONNECT_RSP'\n\
-      \        }\n    PDU_Add={\n            '0':'Public',\n            '1':'Random'\n\
-      \        }\n    PDU_CHSEL={\n            '0':'#1',\n            '1':'#2'\n \
-      \       }\n        \n    '''\n    Bits to String\n    Reverse the byte order\
-      \ of the bit stream and convert it to string format\n    The endianness is the\
-      \ same as wireshark shows.\n    '''\n    def bit2str(self,data):\n        str=\"\
-      \"\n        index=0\n        for i in range(int(len(data)/8)):\n           \
-      \ Bytes=[data[x] for x in range(index,index+4)]\n            Bytes2=[data[x]\
-      \ for x in range(index+4,index+8)]\n            str+=format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\
-      \".join(Bytes[::-1]),2),'x') # Bits need reverse\n            index+=8\n   \
-      \     return str\n\n    \"\"\"\n    Access Address Gain\n    \"\"\"\n    def\
-      \ AA_Gain(self,data):\n        data_lsb = data[2:10]\n        aa = self.lsb2value(data_lsb)\n\
-      \        #for i in range(4): \n        #    aa += data_lsb[(3-i)*2]+data_lsb[(3-i)*2+1]\n\
+      \        print (\"    , CRC : \"+self.output['crc']+\"]\\n\")\n\n        \n\
+      \        self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(str(self.output)))\n\
+      \n    '''\n    PDU Help Dict\n    '''\n    PDU_Type={\n            '0000':'ADV_IND',\n\
+      \            '0001':'ADV_DIRECT_IND',\n            '0010':'ADV_NONCONN_IND',\n\
+      \            '0011':'SCAN_REQ',\n            '0100':'SCAN_RES',\n          \
+      \  '0101':'CONNECT_IND',\n            '0110':'ADV_SCAN_IND',\n            '0111':'ADV_EXT_IND',\n\
+      \            '1000':'AUX_CONNECT_RSP'\n        }\n    PDU_Add={\n          \
+      \  '0':'Public',\n            '1':'Random'\n        }\n    PDU_CHSEL={\n   \
+      \         '0':'#1',\n            '1':'#2'\n        }\n        \n    '''\n  \
+      \  Bits to String\n    Reverse the byte order of the bit stream and convert\
+      \ it to string format\n    The endianness is the same as wireshark shows.\n\
+      \    '''\n    def bit2str(self,data):\n        str=\"\"\n        index=0\n \
+      \       for i in range(int(len(data)/8)):\n            Bytes=[data[x] for x\
+      \ in range(index,index+4)]\n            Bytes2=[data[x] for x in range(index+4,index+8)]\n\
+      \            str+=format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\"\
+      .join(Bytes[::-1]),2),'x') # Bits need reverse\n            index+=8\n     \
+      \   return str\n\n    \"\"\"\n    Access Address Gain\n    \"\"\"\n    def AA_Gain(self,data):\n\
+      \        data_lsb = data[2:10]\n        aa = self.lsb2value(data_lsb)\n    \
+      \    #for i in range(4): \n        #    aa += data_lsb[(3-i)*2]+data_lsb[(3-i)*2+1]\n\
       \        self.output['AA']=aa\n        #return aa\n\n    '''\n    PDU payload\
       \ len Gain\n    '''\n    def PDU_Len(self,data):\n        #data_lsb = data[10:12]\n\
       \        data_lsb = data[12:14]\n        pdu_len = self.lsb2value(data_lsb)\n\
@@ -285,17 +290,35 @@ blocks:
       \ bits[2]\n        pdu_RxAdd = bits[3]\n        ## Return\n        self.output['type']=pdu_type\
       \ \n        self.output['rfu']=pdu_rfu\n        self.output['ChSel']=pdu_ChSel\n\
       \        self.output['TxAdd']=pdu_TxAdd\n        self.output['RxAdd']=pdu_RxAdd\n\
-      \n        \n    def PDU_Payload(self,data):\n        self.output['payload']=data[14:-6]\
-      \ \n\n    '''\n    PDU CRC Gain\n    '''\n    def PDU_CRC(self,data):\n    \
-      \    crc = data[-6:]\n        crc_re=\"\"\n        #for i in range(len(crc)):\
-      \       \n            #crc_re+=hex(int(bin(int(crc[i],base=16))[2:].zfill(4)[::-1],2))[2:]\n\
+      \n        \n    def PDU_Payload(self,data):\n        self.output['head']=data[10:14]\
+      \ # PDU header\n        self.output['payload']=data[14:-6]  # PDU payload\n\n\
+      \    '''\n    PDU CRC Gain\n    '''\n    def PDU_CRC(self,data):\n        crc\
+      \ = data[-6:]\n        crc_re=\"\"\n        #for i in range(len(crc)):     \
+      \  \n            #crc_re+=hex(int(bin(int(crc[i],base=16))[2:].zfill(4)[::-1],2))[2:]\n\
       \        #print(crc)\n        for i in range(3):\n            crc_re+=crc[(2-i)*2]+crc[(2-i)*2+1]\n\
-      \        self.output['crc'] =\"0x\" + crc_re\n\n    '''\n    Parse the little-endian\
-      \ data byte sequence to get the real value of this field\n    (provided that\
-      \ the metadata comes from bit2str)\n    '''\n    def lsb2value(self,data):\n\
-      \        length = int(len(data)/2)\n        str=\"\"\n        for i in range(length):\
-      \ \n            str += data[(length-1-i)*2]+data[(length-1-i)*2+1]\n       \
-      \ return str"
+      \        self.output['crc'] =\"0x\" + crc_re\n\n    def PDU_CRC_CAL(self,data,crcinit=0x555555):\n\
+      \        data_re=\"\"\n        #Restoring the byte order to the original order\
+      \ during Bluetooth transmission \n        #is actually a bit redundant and worth\
+      \ optimizing.\n        for i in range(int(len(data)/2)):\n            data_re\
+      \ +=hex(int((bin(int(data[i*2],base=16))[2:].zfill(4) + bin(int(data[i*2+1],base=16))[2:].zfill(4))[::-1],base=2)\
+      \ )[2:].zfill(2)\n        payload = binascii.unhexlify(data_re)\n        crc24\
+      \ = self.crc24(payload,crcinit)\n        return int(bin(crc24)[2:].zfill(24)[::-1],2)\
+      \ # reverse bits\n\n    def crc24(self,octets,crcint):\n        INIT = crcint\n\
+      \        POLY = 0x100065B\n        crc = INIT\n        for octet in octets:\
+      \ # this is what the '*octets++' logic is effectively\n        # accomplishing\
+      \ in the C code.\n            crc ^= (octet << 16)\n            # Throw that\
+      \ ROL function away, because the C code **doesn't** actually\n            #\
+      \ rotate left; it shifts left. It happens to throw away any bits that are\n\
+      \            # shifted past the 32nd position, but that doesn't actulaly matter\
+      \ for\n            # the correctness of the algorithm, because those bits can\
+      \ never \"come back\"\n            # and we will mask off everything but the\
+      \ bottom 24 at the end anyway.\n            for i in range(8):\n           \
+      \     crc <<= 1\n                if crc & 0x1000000: crc ^= POLY\n        return\
+      \ crc & 0xFFFFFF\n\n\n    '''\n    Parse the little-endian data byte sequence\
+      \ to get the real value of this field\n    (provided that the metadata comes\
+      \ from bit2str)\n    '''\n    def lsb2value(self,data):\n        length = int(len(data)/2)\n\
+      \        str=\"\"\n        for i in range(length): \n            str += data[(length-1-i)*2]+data[(length-1-i)*2+1]\n\
+      \        return str"
     affinity: ''
     alias: ''
     comment: ''
@@ -307,7 +330,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [704, 332.0]
+    coordinate: [864, 332.0]
     rotation: 0
     state: true
 - name: osmosdr_source_0

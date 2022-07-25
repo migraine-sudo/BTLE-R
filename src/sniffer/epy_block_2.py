@@ -7,6 +7,7 @@ import numpy as np
 from gnuradio import gr
 import pmt
 import time
+import binascii
 
 class blk(gr.sync_block):  # other base classes are basic_block, decim_block, interp_block
     """Whiltening Blocks"""
@@ -38,12 +39,21 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         self.AA_Gain(packet_str)
         self.PDU_Payload(packet_str)
         self.PDU_CRC(packet_str)
+
+        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload']) #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])
+        if crc_ca !=int(self.output['crc'],base=16):
+            print("[LOG] Drop packets [CRC wrong]\n")
+            return 0
+        '''
+        LOG
+        '''
         print ("PACKETS —> ["+packet_str+"]")
         print ('    [CH]:'+str(self.channel),end=' ')
 
         if self.channel in [37,38,39]:
             """Advertising Physical Channel PDU"""
             self.PDU_ADV_Parse(packet_str) ## Parse Header
+            '''Log'''
             try:
                 print ("    [Type]  : "+self.PDU_Type[self.output['type']],end=' ')
                 print ("    [ChSel] : "+self.PDU_CHSEL[self.output['ChSel']],end=' ')
@@ -59,6 +69,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         print ("    [LEN : "+str(len),end='')
         print ("    , CRC : "+self.output['crc']+"]\n")
 
+        
         self.message_port_pub(pmt.intern("msg_out"),pmt.intern(str(self.output)))
 
     '''
@@ -139,7 +150,8 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
 
         
     def PDU_Payload(self,data):
-        self.output['payload']=data[14:-6] 
+        self.output['head']=data[10:14] # PDU header
+        self.output['payload']=data[14:-6]  # PDU payload
 
     '''
     PDU CRC Gain
@@ -153,6 +165,34 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         for i in range(3):
             crc_re+=crc[(2-i)*2]+crc[(2-i)*2+1]
         self.output['crc'] ="0x" + crc_re
+
+    def PDU_CRC_CAL(self,data,crcinit=0x555555):
+        data_re=""
+        #Restoring the byte order to the original order during Bluetooth transmission 
+        #is actually a bit redundant and worth optimizing.
+        for i in range(int(len(data)/2)):
+            data_re +=hex(int((bin(int(data[i*2],base=16))[2:].zfill(4) + bin(int(data[i*2+1],base=16))[2:].zfill(4))[::-1],base=2) )[2:].zfill(2)
+        payload = binascii.unhexlify(data_re)
+        crc24 = self.crc24(payload,crcinit)
+        return int(bin(crc24)[2:].zfill(24)[::-1],2) # reverse bits
+
+    def crc24(self,octets,crcint):
+        INIT = crcint
+        POLY = 0x100065B
+        crc = INIT
+        for octet in octets: # this is what the '*octets++' logic is effectively
+        # accomplishing in the C code.
+            crc ^= (octet << 16)
+            # Throw that ROL function away, because the C code **doesn't** actually
+            # rotate left; it shifts left. It happens to throw away any bits that are
+            # shifted past the 32nd position, but that doesn't actulaly matter for
+            # the correctness of the algorithm, because those bits can never "come back"
+            # and we will mask off everything but the bottom 24 at the end anyway.
+            for i in range(8):
+                crc <<= 1
+                if crc & 0x1000000: crc ^= POLY
+        return crc & 0xFFFFFF
+
 
     '''
     Parse the little-endian data byte sequence to get the real value of this field

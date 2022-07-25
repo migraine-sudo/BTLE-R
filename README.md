@@ -10,9 +10,7 @@ Currently under development, it supports sniffing and parsing of broadcast packe
 Tested runtime environment  *(but not required)* :
 
 - [gnuradio](https://github.com/gnuradio/gnuradio) v*3.8.5.0*
-
 - [gr-osmosdr](https://github.com/osmocom/gr-osmosdr) v*0.2.0.0*
-
 - [HackRF One](https://github.com/greatscottgadgets/hackrf) with firmware 2021.03.1
 
 # BUID&RUN
@@ -74,6 +72,20 @@ $ python3 ble_decode.py
 
 # Doc
 
-![GRC-Sniffer](./pic/GRC-Sniffer.png)
+![GRC-Sniffer](./pic/GRC-Sniffer.png)Moudle Design
 
-Moudle Design
+- GFSKDemod(Use GNURadio Default)
+
+- BlE Packets Gain
+
+- Data Whiting/De-Whiting
+
+- CRC Check
+- PDU Parse(Only Advertising Physical Channel，so far)
+
+In the Plan
+
+- Data Physical Channel
+
+- Hop channel
+- Transfer Mode(big project，maybe another)
