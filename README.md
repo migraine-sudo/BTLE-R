@@ -5,6 +5,8 @@
 BTLE-R is a sniffing module for an open source software-defined radio (HackRF One) Bluetooth Low Energy software experiment kit.
 Currently under development, it supports sniffing and parsing of broadcast packets.Please look forward to!
 
+> Refer to Bluetooth Core Specification v 5.3
+
 # Requirements
 
 Tested runtime environment  *(but not required)* :
@@ -74,7 +76,7 @@ $ python3 ble_decode.py
 
 ![GRC-Sniffer](./pic/GRC-Sniffer.png)Moudle Design
 
-- GFSKDemod(Use GNURadio Default)
+- GFSKDemod (GNURadio Default)
 
 - BlE Packets Gain
 

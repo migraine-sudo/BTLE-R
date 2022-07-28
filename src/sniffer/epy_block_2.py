@@ -41,15 +41,17 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         self.PDU_CRC(packet_str)
 
         crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload']) #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])
-        if crc_ca !=int(self.output['crc'],base=16):
+        
+        if crc_ca !=int(self.output['crc'],base=16): # CRC Check
             print("[LOG] Drop packets [CRC wrong]\n")
             return 0
+            
         '''
         LOG
         '''
         print ("PACKETS —> ["+packet_str+"]")
         print ('    [CH]:'+str(self.channel),end=' ')
-
+        print ('    [AA]:0x'+self.output['AA'].upper(),end='')
         if self.channel in [37,38,39]:
             """Advertising Physical Channel PDU"""
             self.PDU_ADV_Parse(packet_str) ## Parse Header
@@ -79,11 +81,11 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             '0000':'ADV_IND',
             '0001':'ADV_DIRECT_IND',
             '0010':'ADV_NONCONN_IND',
-            '0011':'SCAN_REQ',
+            '0011':'SCAN_REQ/AUX_SCAN_REQ',
             '0100':'SCAN_RES',
-            '0101':'CONNECT_IND',
+            '0101':'CONNECT_IND/AUX_CONNECT_REQ',
             '0110':'ADV_SCAN_IND',
-            '0111':'ADV_EXT_IND',
+            '0111':'ADV_EXT_IND',   #AUX_ADV_IND/AUX_SCAN_RSP/AUX_SYNC_IND/AUX_CHAIN_IND
             '1000':'AUX_CONNECT_RSP'
         }
     PDU_Add={

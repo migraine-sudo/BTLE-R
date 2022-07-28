@@ -32,11 +32,35 @@ options:
     state: enabled
 
 blocks:
+- name: access_address
+  id: variable
+  parameters:
+    comment: ''
+    value: '''0x8E89BED6'''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [528, 12.0]
+    rotation: 0
+    state: true
+- name: channel_id
+  id: variable
+  parameters:
+    comment: ''
+    value: '39'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [416, 12.0]
+    rotation: 0
+    state: true
 - name: freq_channel
   id: variable
   parameters:
     comment: ''
-    value: 2.402e9
+    value: 2.480e9
   states:
     bus_sink: false
     bus_source: false
@@ -101,7 +125,7 @@ blocks:
 - name: epy_block_0
   id: epy_block
   parameters:
-    AA: '''0x8E89BED6'''
+    AA: access_address
     _source_code: "\"\"\"\nBLE_Packets_Gain Block\n\nThe input data comes from GFSKDemod,\
       \ which captures BLE air packets according to PREAMBLE and AccessAddress. \n\
       According to the longest value of BLE Packets, forward the data to the next\
@@ -120,13 +144,16 @@ blocks:
       \      # a callback is registered (properties work, too).\n        self.AccessAddress\
       \ = AA\n        self.last_packets=\"\"\n\n    def work(self, input_items, output_items):\n\
       \        bits_stream=input_items[0]\n        bits_decode=\"\"\n        for x\
-      \ in bits_stream:  \n            bits_decode+=str(x)\n\n        AA =bin(int(self.AccessAddress,base=16))[2:].zfill(8*4)[::-1]\n\
-      \        PREAMBLE=\"01010101\" # 0xaa reverse\n        PREAMBLE2=\"10101010\"\
-      \ # 0x55 reverse\n        #AA = \"01101011011111011001000101110001\" #Access\
-      \ Address = 0x8E89BED6\n        \n        packet1 = PREAMBLE+AA\n        #packet2\
-      \ = PREAMBLE2+AA\n\n        if packet1 in bits_decode :\n            index =\
-      \ bits_decode.find(packet1)\n            \n            if len(bits_decode) -\
-      \ index >= 47*8:    # Drop packets\n                packets = bits_decode[index:index+47*8]\n\
+      \ in bits_stream:  \n            bits_decode+=str(x)\n\n        if self.AccessAddress!='':\n\
+      \            AA =bin(int(self.AccessAddress,base=16))[2:].zfill(8*4)[::-1]\n\
+      \        else:\n            AA=\"\"\n        PREAMBLE=\"01010101\" # 0xaa reverse\n\
+      \        PREAMBLE2=\"10101010\" # 0x55 reverse\n        #AA = \"01101011011111011001000101110001\"\
+      \ #Access Address = 0x8E89BED6\n        \n        packet1 = PREAMBLE+AA\n  \
+      \      packet2 = PREAMBLE2+AA\n\n        if packet1 in bits_decode or packet2\
+      \ in bits_decode :\n            if packet1 in bits_decode:\n               \
+      \ index = bits_decode.find(packet1)\n            else:\n                index\
+      \ = bits_decode.find(packet2)\n            \n            if len(bits_decode)\
+      \ - index >= 47*8:    # Drop packets\n                packets = bits_decode[index:index+47*8]\n\
       \            else:\n                #print(\"copy failed\")\n              \
       \  return len(input_items[0])   \n                         \n            if\
       \ packets[44*8:] == self.last_packets:  # Deduplication according to CRCs\n\
@@ -168,7 +195,7 @@ blocks:
 - name: epy_block_1
   id: epy_block
   parameters:
-    CHANNEL: '37'
+    CHANNEL: channel_id
     _source_code: "\"\"\"\nWhiltening/De-Whitening Blocks:\n\nInverse whitening of\
       \ BLE data packets, so that we can parse the PDU format of the link layer then.\n\
       \nInput data: Message data from BLE_Packets_Gain module\n\"\"\"\n\nimport numpy\
@@ -226,7 +253,7 @@ blocks:
 - name: epy_block_2
   id: epy_block
   parameters:
-    CHANNEL: '37'
+    CHANNEL: channel_id
     _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\n\"\"\"\n\nimport numpy as np\n\
       from gnuradio import gr\nimport pmt\nimport time\nimport binascii\n\nclass blk(gr.sync_block):\
       \  # other base classes are basic_block, decim_block, interp_block\n    \"\"\
@@ -245,15 +272,16 @@ blocks:
       \        packet_str = packet_str[:len*2+20] # minus the excess at the end\n\n\
       \        # Start Parse PDU\n        self.AA_Gain(packet_str)\n        self.PDU_Payload(packet_str)\n\
       \        self.PDU_CRC(packet_str)\n\n        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'])\
-      \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n        if crc_ca !=int(self.output['crc'],base=16):\n\
-      \            print(\"[LOG] Drop packets [CRC wrong]\\n\")\n            return\
-      \ 0\n        '''\n        LOG\n        '''\n        print (\"PACKETS \u2014\
-      > [\"+packet_str+\"]\")\n        print ('    [CH]:'+str(self.channel),end='\
-      \ ')\n\n        if self.channel in [37,38,39]:\n            \"\"\"Advertising\
-      \ Physical Channel PDU\"\"\"\n            self.PDU_ADV_Parse(packet_str) ##\
-      \ Parse Header\n            '''Log'''\n            try:\n                print\
-      \ (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end=' ')\n        \
-      \        print (\"    [ChSel] : \"+self.PDU_CHSEL[self.output['ChSel']],end='\
+      \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n        \n        if crc_ca\
+      \ !=int(self.output['crc'],base=16): # CRC Check\n            print(\"[LOG]\
+      \ Drop packets [CRC wrong]\\n\")\n            return 0\n            \n     \
+      \   '''\n        LOG\n        '''\n        print (\"PACKETS \u2014> [\"+packet_str+\"\
+      ]\")\n        print ('    [CH]:'+str(self.channel),end=' ')\n        print ('\
+      \    [AA]:0x'+self.output['AA'].upper(),end='')\n        if self.channel in\
+      \ [37,38,39]:\n            \"\"\"Advertising Physical Channel PDU\"\"\"\n  \
+      \          self.PDU_ADV_Parse(packet_str) ## Parse Header\n            '''Log'''\n\
+      \            try:\n                print (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end='\
+      \ ')\n                print (\"    [ChSel] : \"+self.PDU_CHSEL[self.output['ChSel']],end='\
       \ ')\n                print (\"    [TxAdd] : \"+self.PDU_Add[self.output['TxAdd']],end='\
       \ ')\n                print (\"    [RxAdd] : \"+self.PDU_Add[self.output['RxAdd']])\n\
       \            except:\n                print(\"Invaild PDU Header\")\n      \
@@ -264,8 +292,9 @@ blocks:
       \        self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(str(self.output)))\n\
       \n    '''\n    PDU Help Dict\n    '''\n    PDU_Type={\n            '0000':'ADV_IND',\n\
       \            '0001':'ADV_DIRECT_IND',\n            '0010':'ADV_NONCONN_IND',\n\
-      \            '0011':'SCAN_REQ',\n            '0100':'SCAN_RES',\n          \
-      \  '0101':'CONNECT_IND',\n            '0110':'ADV_SCAN_IND',\n            '0111':'ADV_EXT_IND',\n\
+      \            '0011':'SCAN_REQ/AUX_SCAN_REQ',\n            '0100':'SCAN_RES',\n\
+      \            '0101':'CONNECT_IND/AUX_CONNECT_REQ',\n            '0110':'ADV_SCAN_IND',\n\
+      \            '0111':'ADV_EXT_IND',   #AUX_ADV_IND/AUX_SCAN_RSP/AUX_SYNC_IND/AUX_CHAIN_IND\n\
       \            '1000':'AUX_CONNECT_RSP'\n        }\n    PDU_Add={\n          \
       \  '0':'Public',\n            '1':'Random'\n        }\n    PDU_CHSEL={\n   \
       \         '0':'#1',\n            '1':'#2'\n        }\n        \n    '''\n  \

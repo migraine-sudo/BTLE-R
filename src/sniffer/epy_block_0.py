@@ -43,16 +43,22 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         for x in bits_stream:  
             bits_decode+=str(x)
 
-        AA =bin(int(self.AccessAddress,base=16))[2:].zfill(8*4)[::-1]
+        if self.AccessAddress!='':
+            AA =bin(int(self.AccessAddress,base=16))[2:].zfill(8*4)[::-1]
+        else:
+            AA=""
         PREAMBLE="01010101" # 0xaa reverse
         PREAMBLE2="10101010" # 0x55 reverse
         #AA = "01101011011111011001000101110001" #Access Address = 0x8E89BED6
         
         packet1 = PREAMBLE+AA
-        #packet2 = PREAMBLE2+AA
+        packet2 = PREAMBLE2+AA
 
-        if packet1 in bits_decode :
-            index = bits_decode.find(packet1)
+        if packet1 in bits_decode or packet2 in bits_decode :
+            if packet1 in bits_decode:
+                index = bits_decode.find(packet1)
+            else:
+                index = bits_decode.find(packet2)
             
             if len(bits_decode) - index >= 47*8:    # Drop packets
                 packets = bits_decode[index:index+47*8]
