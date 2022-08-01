@@ -2,8 +2,8 @@
 
 ![](https://img.shields.io/badge/Hardware-Hackrf%20One-brightgreen)![](https://img.shields.io/badge/Protocol-BLE-blue)
 
-**BTLE-Radio** is an open source software-defined radio (HackRF One) Bluetooth low energy software experiment kit that uses software-defined to implement BLE baseband, especially the physical layer and link layer of the BLE protocol stack.
-Currently under development, it supports sniffing and parsing of three frequency bands of broadcast packets, so stay tuned!
+**BTLE-Radio** is an open source software-defined radio (HackRF One) Bluetooth low energy software experiment kit. Implement BLE baseband using software definition. In the BLE protocol stack, it corresponds to the physical layer and the link layer.
+Currently supports sniffing and parsing of air interface packets in three frequency bands, so stay tuned!
 
 > Refer to Bluetooth Core Specification v 5.3
 
