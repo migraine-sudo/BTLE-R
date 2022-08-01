@@ -1,5 +1,9 @@
+import sys
+sys.path.append('./sniffer/')
+
 from bisect import bisect_left
 from pickle import TRUE
+
 import ble_decode
 import signal
 import sys
