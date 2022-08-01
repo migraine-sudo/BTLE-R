@@ -35,6 +35,7 @@ class ble_decode(gr.top_block):
         ##################################################
         self.samp_rate = samp_rate = 4e6
         self.freq_channel = freq_channel = 2.480e9
+        self.crc_init = crc_init = '0x555555'
         self.channel_id = channel_id = 39
         self.access_address = access_address = '0x8E89BED6'
 
@@ -56,7 +57,7 @@ class ble_decode(gr.top_block):
         self.osmosdr_source_0.set_bb_gain(20, 0)
         self.osmosdr_source_0.set_antenna('', 0)
         self.osmosdr_source_0.set_bandwidth(2e6, 0)
-        self.epy_block_2 = epy_block_2.blk(CHANNEL=channel_id)
+        self.epy_block_2 = epy_block_2.blk(CHANNEL=channel_id, CRCINIT=crc_init)
         self.epy_block_1 = epy_block_1.blk(CHANNEL=channel_id)
         self.epy_block_0 = epy_block_0.blk(AA=access_address)
         self.digital_gfsk_demod_0 = digital.gfsk_demod(
@@ -95,6 +96,12 @@ class ble_decode(gr.top_block):
     def set_freq_channel(self, freq_channel):
         self.freq_channel = freq_channel
         self.osmosdr_source_0.set_center_freq(self.freq_channel, 0)
+
+    def get_crc_init(self):
+        return self.crc_init
+
+    def set_crc_init(self, crc_init):
+        self.crc_init = crc_init
 
     def get_channel_id(self):
         return self.channel_id

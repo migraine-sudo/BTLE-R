@@ -2,8 +2,8 @@
 
 ![](https://img.shields.io/badge/Hardware-Hackrf%20One-brightgreen)![](https://img.shields.io/badge/Protocol-BLE-blue)
 
-BTLE-R is a sniffing module for an open source software-defined radio (HackRF One) Bluetooth Low Energy software experiment kit.
-Currently under development, it supports sniffing and parsing of broadcast packets.Please look forward to!
+**BTLE-Radio** is an open source software-defined radio (HackRF One) Bluetooth low energy software experiment kit that uses software-defined to implement BLE baseband, especially the physical layer and link layer of the BLE protocol stack.
+Currently under development, it supports sniffing and parsing of three frequency bands of broadcast packets, so stay tuned!
 
 > Refer to Bluetooth Core Specification v 5.3
 
@@ -64,13 +64,23 @@ sudo gnuradio-companion
 
 ## RUN
 
-To run the flow graph in GNURadioCompanion or run the python script ble_decode.py, use the following command.
+1. Run GRC. The flow chart is mainly used to develop and debug BTLE-R. You can manually set the frequency band, AccessAddress, etc. in the parameters. If you need to perform automatic channel selection and connection tracking, please use BTLE-R directly.
+
+   To run the flow graph in GNURadioCompanion or run the python script ble_decode.py, use the following command.
 
 ```shell
 $ python3 ble_decode.py
 ```
 
 ![BLE_ADV_Capture](./pic/BLE_ADV_Capture.png)
+
+2. Run BTLE-R (in development). Use python to customize the baseband logic, and currently can complete the frequency hopping of the broadcast channel.
+
+```shell
+$ python3 BTLE-R.py
+```
+
+
 
 # Doc
 

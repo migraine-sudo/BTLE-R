@@ -105,3 +105,5 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         #return len(output_items[0])
         #output_items[0][:] = input_items[0] * self.example_param
 
+    def reset_accaddr(self,aa):
+        self.AccessAddress = aa

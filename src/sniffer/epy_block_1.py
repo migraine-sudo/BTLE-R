@@ -86,3 +86,6 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
                     #print("0x"+format(int("".join(Bytes),2),'x')+format(int("".join(Bytes2),2),'x'),end=' ') 
                     index+=8
         print("]")
+
+    def reset_channel(self,channel):
+        self.channel = channel

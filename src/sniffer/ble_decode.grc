@@ -56,6 +56,18 @@ blocks:
     coordinate: [416, 12.0]
     rotation: 0
     state: true
+- name: crc_init
+  id: variable
+  parameters:
+    comment: ''
+    value: '''0x555555'''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [688, 12.0]
+    rotation: 0
+    state: true
 - name: freq_channel
   id: variable
   parameters:
@@ -177,7 +189,8 @@ blocks:
       \                    print(\"decode fail\")\n                    break    \n\
       \                index+=8\n            print(\"]\")\n        \n        '''\n\
       \        return len(input_items[0])\n        #return len(output_items[0])\n\
-      \        #output_items[0][:] = input_items[0] * self.example_param\n\n"
+      \        #output_items[0][:] = input_items[0] * self.example_param\n\n    def\
+      \ reset_accaddr(self,aa):\n        self.AccessAddress = aa"
     affinity: ''
     alias: ''
     comment: ''
@@ -235,7 +248,7 @@ blocks:
       \         print(format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\".join(Bytes[::-1]),2),'x'),end='')\
       \ # Bits need reverse\n                    #print(\"0x\"+format(int(\"\".join(Bytes),2),'x')+format(int(\"\
       \".join(Bytes2),2),'x'),end=' ') \n                    index+=8\n        print(\"\
-      ]\")"
+      ]\")\n\n    def reset_channel(self,channel):\n        self.channel = channel"
     affinity: ''
     alias: ''
     comment: ''
@@ -254,10 +267,12 @@ blocks:
   id: epy_block
   parameters:
     CHANNEL: channel_id
-    _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\n\"\"\"\n\nimport numpy as np\n\
-      from gnuradio import gr\nimport pmt\nimport time\nimport binascii\n\nclass blk(gr.sync_block):\
-      \  # other base classes are basic_block, decim_block, interp_block\n    \"\"\
-      \"Whiltening Blocks\"\"\"\n\n    def __init__(self, CHANNEL = 37):  # only default\
+    CRCINIT: crc_init
+    _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\n\"\"\"\n\nfrom email.headerregistry\
+      \ import Address\nimport numpy as np\nfrom gnuradio import gr\nimport pmt\n\
+      import time\nimport binascii\n\nclass blk(gr.sync_block):  # other base classes\
+      \ are basic_block, decim_block, interp_block\n    \"\"\"Whiltening Blocks\"\"\
+      \"\n\n    def __init__(self, CHANNEL = 37,CRCINIT = '0x555555'):  # only default\
       \ arguments here\n        \"\"\"arguments to this function show up as parameters\
       \ in GRC\"\"\"\n        gr.sync_block.__init__(\n            self,\n       \
       \     name='BLE PDU Decode',   # will show up in GRC\n            in_sig=None,\n\
@@ -265,25 +280,30 @@ blocks:
       \        self.set_msg_handler(pmt.intern('msg_in'), self.handle_msg)\n     \
       \   self.message_port_register_out(pmt.intern('msg_out'))\n        # if an attribute\
       \ with the same name as a parameter is found,\n        # a callback is registered\
-      \ (properties work, too).\n        self.channel = CHANNEL\n        self.output={'Channel':self.channel}\n\
-      \n    def handle_msg(self,msg):\n        packets=pmt.symbol_to_string(msg)\n\
-      \        packet_str = self.bit2str(packets) # Convert the bitstream to a string,\
-      \ modify the bits order\n        \n        len = self.PDU_Len(packet_str)\n\
-      \        packet_str = packet_str[:len*2+20] # minus the excess at the end\n\n\
-      \        # Start Parse PDU\n        self.AA_Gain(packet_str)\n        self.PDU_Payload(packet_str)\n\
-      \        self.PDU_CRC(packet_str)\n\n        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'])\
-      \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n        \n        if crc_ca\
-      \ !=int(self.output['crc'],base=16): # CRC Check\n            print(\"[LOG]\
-      \ Drop packets [CRC wrong]\\n\")\n            return 0\n            \n     \
-      \   '''\n        LOG\n        '''\n        print (\"PACKETS \u2014> [\"+packet_str+\"\
-      ]\")\n        print ('    [CH]:'+str(self.channel),end=' ')\n        print ('\
-      \    [AA]:0x'+self.output['AA'].upper(),end='')\n        if self.channel in\
-      \ [37,38,39]:\n            \"\"\"Advertising Physical Channel PDU\"\"\"\n  \
-      \          self.PDU_ADV_Parse(packet_str) ## Parse Header\n            '''Log'''\n\
-      \            try:\n                print (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end='\
-      \ ')\n                print (\"    [ChSel] : \"+self.PDU_CHSEL[self.output['ChSel']],end='\
+      \ (properties work, too).\n        self.channel = CHANNEL\n        self.crcinit\
+      \ = CRCINIT\n        \n\n    def handle_msg(self,msg):\n        self.output={'Channel':self.channel,'pdu_payload':{}}\n\
+      \n        packets=pmt.symbol_to_string(msg)\n        packet_str = self.bit2str(packets)\
+      \ # Convert the bitstream to a string, modify the bits order\n        \n   \
+      \     len = self.PDU_Len(packet_str)\n        packet_str = packet_str[:len*2+20]\
+      \ # minus the excess at the end\n\n        # Start Parse PDU\n        self.AA_Gain(packet_str)\n\
+      \        self.PDU_Payload(packet_str)\n        self.PDU_CRC(packet_str)\n\n\
+      \        try:\n            CRCInit=int(self.crcinit,base=16)\n        except:\n\
+      \            print(\"[Warning] the type of CRCInit should be string,using 0x555555\
+      \ Default\")\n            CRCInit=0x555555\n        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit)\
+      \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n        if crc_ca !=int(self.output['crc'],base=16):\
+      \ # CRC Check\n            print(\"[LOG] Drop packets [CRC wrong]\\n\")\n  \
+      \          return 0\n\n        '''\n        LOG\n        '''\n        print\
+      \ (\"PACKETS \u2014> [\"+packet_str+\"]\")\n        print ('    [CH]:'+str(self.channel),end='\
+      \ ')\n        print ('    [AA]:0x'+self.output['AA'].upper(),end='')\n     \
+      \   if self.channel in [37,38,39]:\n            \"\"\"Advertising Physical Channel\
+      \ PDU\"\"\"\n            self.ADV_HEAD_Parse(packet_str) ## Parse Header\n \
+      \           self.ADV_Payload_Parse(self.output['type'],self.output['payload'])\
+      \ ## Parse Payload\n            '''Log'''\n            try:\n              \
+      \  print (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end=' ')\n \
+      \               print (\"    [ChSel] : \"+self.PDU_CHSEL[self.output['ChSel']],end='\
       \ ')\n                print (\"    [TxAdd] : \"+self.PDU_Add[self.output['TxAdd']],end='\
       \ ')\n                print (\"    [RxAdd] : \"+self.PDU_Add[self.output['RxAdd']])\n\
+      \                print (\"     |----- [PDU] : \" + str(self.output['pdu_payload']))\n\
       \            except:\n                print(\"Invaild PDU Header\")\n      \
       \  else:\n            \"\"\"Data Physical Channel PDU\"\"\"\n            print(\"\
       Data Physical Channel PDU\")\n        \n        print (\"    [PAYLOAD] : [\"\
@@ -292,8 +312,8 @@ blocks:
       \        self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(str(self.output)))\n\
       \n    '''\n    PDU Help Dict\n    '''\n    PDU_Type={\n            '0000':'ADV_IND',\n\
       \            '0001':'ADV_DIRECT_IND',\n            '0010':'ADV_NONCONN_IND',\n\
-      \            '0011':'SCAN_REQ/AUX_SCAN_REQ',\n            '0100':'SCAN_RES',\n\
-      \            '0101':'CONNECT_IND/AUX_CONNECT_REQ',\n            '0110':'ADV_SCAN_IND',\n\
+      \            '0011':'SCAN_REQ',  #AUX_SCAN_REQ\n            '0100':'SCAN_RES',\n\
+      \            '0101':'CONNECT_IND',   #AUX_CONNECT_REQ\n            '0110':'ADV_SCAN_IND',\n\
       \            '0111':'ADV_EXT_IND',   #AUX_ADV_IND/AUX_SCAN_RSP/AUX_SYNC_IND/AUX_CHAIN_IND\n\
       \            '1000':'AUX_CONNECT_RSP'\n        }\n    PDU_Add={\n          \
       \  '0':'Public',\n            '1':'Random'\n        }\n    PDU_CHSEL={\n   \
@@ -305,25 +325,21 @@ blocks:
       \ in range(index,index+4)]\n            Bytes2=[data[x] for x in range(index+4,index+8)]\n\
       \            str+=format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\"\
       .join(Bytes[::-1]),2),'x') # Bits need reverse\n            index+=8\n     \
-      \   return str\n\n    \"\"\"\n    Access Address Gain\n    \"\"\"\n    def AA_Gain(self,data):\n\
-      \        data_lsb = data[2:10]\n        aa = self.lsb2value(data_lsb)\n    \
-      \    #for i in range(4): \n        #    aa += data_lsb[(3-i)*2]+data_lsb[(3-i)*2+1]\n\
+      \   return str\n\n    '''\n    Parse the little-endian data byte sequence to\
+      \ get the real value of this field\n    (provided that the metadata comes from\
+      \ bit2str)\n    '''\n    def lsb2value(self,data):\n        length = int(len(data)/2)\n\
+      \        str=\"\"\n        for i in range(length): \n            str += data[(length-1-i)*2]+data[(length-1-i)*2+1]\n\
+      \        return str\n\n    \"\"\"\n    Access Address Gain\n    \"\"\"\n   \
+      \ def AA_Gain(self,data):\n        data_lsb = data[2:10]\n        aa = self.lsb2value(data_lsb)\n\
+      \        #for i in range(4): \n        #    aa += data_lsb[(3-i)*2]+data_lsb[(3-i)*2+1]\n\
       \        self.output['AA']=aa\n        #return aa\n\n    '''\n    PDU payload\
       \ len Gain\n    '''\n    def PDU_Len(self,data):\n        #data_lsb = data[10:12]\n\
       \        data_lsb = data[12:14]\n        pdu_len = self.lsb2value(data_lsb)\n\
-      \        return int(pdu_len,base=16)\n\n    '''\n    PDU Type && RFU && ChSel\
-      \ && TxAdd && RxAdd\n    '''\n    def PDU_ADV_Parse(self,data):\n        data_lsb\
-      \ = data[10:12]\n        pdu_type = bin(int(data_lsb[1],base=16))[2:].zfill(4)\n\
-      \        bits = bin(int(data_lsb[0],base=16))[2:].zfill(4)[::-1]  #fix endianness\n\
-      \        pdu_rfu = bits[0]\n        pdu_ChSel = bits[1]\n        pdu_TxAdd =\
-      \ bits[2]\n        pdu_RxAdd = bits[3]\n        ## Return\n        self.output['type']=pdu_type\
-      \ \n        self.output['rfu']=pdu_rfu\n        self.output['ChSel']=pdu_ChSel\n\
-      \        self.output['TxAdd']=pdu_TxAdd\n        self.output['RxAdd']=pdu_RxAdd\n\
-      \n        \n    def PDU_Payload(self,data):\n        self.output['head']=data[10:14]\
-      \ # PDU header\n        self.output['payload']=data[14:-6]  # PDU payload\n\n\
-      \    '''\n    PDU CRC Gain\n    '''\n    def PDU_CRC(self,data):\n        crc\
-      \ = data[-6:]\n        crc_re=\"\"\n        #for i in range(len(crc)):     \
-      \  \n            #crc_re+=hex(int(bin(int(crc[i],base=16))[2:].zfill(4)[::-1],2))[2:]\n\
+      \        return int(pdu_len,base=16)\n\n        \n    def PDU_Payload(self,data):\n\
+      \        self.output['head']=data[10:14] # PDU header\n        self.output['payload']=data[14:-6]\
+      \  # PDU payload\n\n    '''\n    PDU CRC Gain\n    '''\n    def PDU_CRC(self,data):\n\
+      \        crc = data[-6:]\n        crc_re=\"\"\n        #for i in range(len(crc)):\
+      \       \n            #crc_re+=hex(int(bin(int(crc[i],base=16))[2:].zfill(4)[::-1],2))[2:]\n\
       \        #print(crc)\n        for i in range(3):\n            crc_re+=crc[(2-i)*2]+crc[(2-i)*2+1]\n\
       \        self.output['crc'] =\"0x\" + crc_re\n\n    def PDU_CRC_CAL(self,data,crcinit=0x555555):\n\
       \        data_re=\"\"\n        #Restoring the byte order to the original order\
@@ -343,19 +359,56 @@ blocks:
       \ never \"come back\"\n            # and we will mask off everything but the\
       \ bottom 24 at the end anyway.\n            for i in range(8):\n           \
       \     crc <<= 1\n                if crc & 0x1000000: crc ^= POLY\n        return\
-      \ crc & 0xFFFFFF\n\n\n    '''\n    Parse the little-endian data byte sequence\
-      \ to get the real value of this field\n    (provided that the metadata comes\
-      \ from bit2str)\n    '''\n    def lsb2value(self,data):\n        length = int(len(data)/2)\n\
-      \        str=\"\"\n        for i in range(length): \n            str += data[(length-1-i)*2]+data[(length-1-i)*2+1]\n\
-      \        return str"
+      \ crc & 0xFFFFFF\n\n\n    '''\n    PDU Type && RFU && ChSel && TxAdd && RxAdd\n\
+      \    '''\n    def ADV_HEAD_Parse(self,data):\n        data_lsb = data[10:12]\n\
+      \        pdu_type = bin(int(data_lsb[1],base=16))[2:].zfill(4)\n        bits\
+      \ = bin(int(data_lsb[0],base=16))[2:].zfill(4)[::-1]  #fix endianness\n    \
+      \    pdu_rfu = bits[0]\n        pdu_ChSel = bits[1]\n        pdu_TxAdd = bits[2]\n\
+      \        pdu_RxAdd = bits[3]\n        ## Return\n        self.output['type']=pdu_type\
+      \ \n        self.output['rfu']=pdu_rfu\n        self.output['ChSel']=pdu_ChSel\n\
+      \        self.output['TxAdd']=pdu_TxAdd\n        self.output['RxAdd']=pdu_RxAdd\n\
+      \n    '''\n    ADV Payload Decode\n    Supported PDU Type\n        'ADV_IND','ADV_DIRECT_IND','ADV_NONCONN_IND','ADV_SCAN_IND','SCAN_RSP','SCAN_REQ','CONNECT_IND'\n\
+      \    Unsupported PDU Type\n        'AUX_*'\n    '''\n    \n    def ADV_Payload_Parse(self,type,payload):\n\
+      \        if self.PDU_Type[type] in ['ADV_IND','ADV_DIRECT_IND','ADV_NONCONN_IND','ADV_SCAN_IND','SCAN_RSP']:\n\
+      \            AdvAddress = \"\"\n            for i in range(6):\n           \
+      \     AdvAddress += payload[10-i*2]+payload[11-i*2]+\":\"\n            self.output['pdu_payload']['AdvA']=AdvAddress[:-1]\n\
+      \            #self.output['pdu_payload']['AdvA_test']=self.lsb2msb(payload,0,6)\n\
+      \n            if self.PDU_Type[type] in ['ADV_IND','ADV_NONCONN_IND','ADV_SCAN_IND']:\n\
+      \                self.output['pdu_payload']['AdvData']=payload[12:]\n      \
+      \      elif self.PDU_Type[type] == 'SCAN_RSP':\n                self.output['pdu_payload']['ScanRspData']=payload[12:]\n\
+      \            elif self.PDU_Type[type] == 'ADV_DIRECT_IND':\n               \
+      \ TargetA = \"\"\n                for i in range(6):\n                    TargetA\
+      \ += payload[22-i*2]+payload[23-i*2]+\":\"\n                self.output['pdu_payload']['TargetA']=TargetA[:-1]\n\
+      \n        if self.PDU_Type[type] in ['SCAN_REQ']:\n            ScanA = \"\"\n\
+      \            AdvA = \"\"\n            for i in range(6):\n                ScanA\
+      \ += payload[10-i*2]+payload[11-i*2]+\":\"\n            self.output['pdu_payload']['ScanA']=ScanA[:-1]\n\
+      \            for i in range(6):\n                AdvA += payload[22-i*2]+payload[23-i*2]+\"\
+      :\"\n                self.output['pdu_payload']['AdvA']=AdvA[:-1]\n\n      \
+      \  # Most Important Part\n        if self.PDU_Type[type] in ['CONNECT_IND']:\n\
+      \            InitA = AdvA = \"\"\n            for i in range(6):\n         \
+      \       InitA += payload[10-i*2]+payload[11-i*2]+\":\"\n            self.output['pdu_payload']['InitA']=InitA[:-1]\n\
+      \            for i in range(6):\n                AdvA += payload[22-i*2]+payload[23-i*2]+\"\
+      :\"\n                self.output['pdu_payload']['AdvA'] = AdvA[:-1]\n      \
+      \      # LL_Data Parse    \n            AA = CRCinit = WinSize = Interval =\
+      \ Latency = Timeout = ChM = Hop = SCA = \"\"\n            LL_Data=payload[24:]\n\
+      \            self.output['pdu_payload']['LLData'] = LL_Data\n            self.output['pdu_payload']['LLData_parse']\
+      \ = {}\n\n            self.output['pdu_payload']['LLData_parse']['AA']=self.lsb2msb(LL_Data,0,4)\n\
+      \            self.output['pdu_payload']['LLData_parse']['CRCInit']=self.lsb2msb(LL_Data,4,3)\n\
+      \            self.output['pdu_payload']['LLData_parse']['WinSize']=self.lsb2msb(LL_Data,7,1)\n\
+      \n\n    def lsb2msb(self,payload,start,length):\n        msb=\"\"\n        for\
+      \ i in range(length):\n            msb += payload[start*2+length*2-2-i*2]+payload[start*2+length*2-1-i*2]\n\
+      \        return msb\n\n\n    def reset_channel(self,channel):\n        self.channel\
+      \ = channel\n    \n    def reset_crcinit(self,crcinit):\n        self.crcinit\
+      \ = crcinit"
     affinity: ''
     alias: ''
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
   states:
-    _io_cache: ('BLE PDU Decode', 'blk', [('CHANNEL', '37')], [('msg_in', 'message',
-      1)], [('msg_out', 'message', 1)], 'Whiltening Blocks', [])
+    _io_cache: ('BLE PDU Decode', 'blk', [('CHANNEL', '37'), ('CRCINIT', "'0x555555'")],
+      [('msg_in', 'message', 1)], [('msg_out', 'message', 1)], 'Whiltening Blocks',
+      [])
     bus_sink: false
     bus_source: false
     bus_structure: null
