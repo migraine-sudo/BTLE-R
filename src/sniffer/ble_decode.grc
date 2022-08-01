@@ -291,30 +291,34 @@ blocks:
       \            print(\"[Warning] the type of CRCInit should be string,using 0x555555\
       \ Default\")\n            CRCInit=0x555555\n        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit)\
       \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n        if crc_ca !=int(self.output['crc'],base=16):\
-      \ # CRC Check\n            print(\"[LOG] Drop packets [CRC wrong]\\n\")\n  \
-      \          return 0\n\n        '''\n        LOG\n        '''\n        print\
-      \ (\"PACKETS \u2014> [\"+packet_str+\"]\")\n        print ('    [CH]:'+str(self.channel),end='\
-      \ ')\n        print ('    [AA]:0x'+self.output['AA'].upper(),end='')\n     \
-      \   if self.channel in [37,38,39]:\n            \"\"\"Advertising Physical Channel\
+      \ # CRC Check\n            #print(\"[LOG] Drop packets [CRC wrong]\\n\")\n \
+      \           return 0\n\n        '''\n        Parse\n        '''\n\n        if\
+      \ self.channel in [37,38,39]:\n            \"\"\"Advertising Physical Channel\
       \ PDU\"\"\"\n            self.ADV_HEAD_Parse(packet_str) ## Parse Header\n \
       \           self.ADV_Payload_Parse(self.output['type'],self.output['payload'])\
-      \ ## Parse Payload\n            '''Log'''\n            try:\n              \
-      \  print (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end=' ')\n \
-      \               print (\"    [ChSel] : \"+self.PDU_CHSEL[self.output['ChSel']],end='\
-      \ ')\n                print (\"    [TxAdd] : \"+self.PDU_Add[self.output['TxAdd']],end='\
-      \ ')\n                print (\"    [RxAdd] : \"+self.PDU_Add[self.output['RxAdd']])\n\
-      \                print (\"     |----- [PDU] : \" + str(self.output['pdu_payload']))\n\
-      \            except:\n                print(\"Invaild PDU Header\")\n      \
-      \  else:\n            \"\"\"Data Physical Channel PDU\"\"\"\n            print(\"\
-      Data Physical Channel PDU\")\n        \n        print (\"    [PAYLOAD] : [\"\
-      +self.output['payload']+\"]\",end='')\n        print (\"    [LEN : \"+str(len),end='')\n\
-      \        print (\"    , CRC : \"+self.output['crc']+\"]\\n\")\n\n        \n\
-      \        self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(str(self.output)))\n\
-      \n    '''\n    PDU Help Dict\n    '''\n    PDU_Type={\n            '0000':'ADV_IND',\n\
-      \            '0001':'ADV_DIRECT_IND',\n            '0010':'ADV_NONCONN_IND',\n\
-      \            '0011':'SCAN_REQ',  #AUX_SCAN_REQ\n            '0100':'SCAN_RES',\n\
-      \            '0101':'CONNECT_IND',   #AUX_CONNECT_REQ\n            '0110':'ADV_SCAN_IND',\n\
-      \            '0111':'ADV_EXT_IND',   #AUX_ADV_IND/AUX_SCAN_RSP/AUX_SYNC_IND/AUX_CHAIN_IND\n\
+      \ ## Parse Payload\n        else:\n            \"\"\"Data Physical Channel PDU\"\
+      \"\"\n            print(\"Data Physical Channel PDU\")\n\n        \"\"\"LOG\"\
+      \"\"\n        if self.PDU_Type[self.output['type']]=='CONNECT_IND':\n      \
+      \      print (\"PACKETS \u2014> [\"+packet_str+\"]\")\n            print ('\
+      \    [CH]:'+str(self.channel),end=' ')\n            print ('    [AA]:0x'+self.output['AA'].upper(),end='')\n\
+      \            if self.channel in [37,38,39]:\n                \"\"\"Advertising\
+      \ Physical Channel PDU\"\"\"      \n                try:\n                 \
+      \   print (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end=' ')\n\
+      \                    print (\"    [ChSel] : \"+self.PDU_CHSEL[self.output['ChSel']],end='\
+      \ ')\n                    print (\"    [TxAdd] : \"+self.PDU_Add[self.output['TxAdd']],end='\
+      \ ')\n                    print (\"    [RxAdd] : \"+self.PDU_Add[self.output['RxAdd']])\n\
+      \                    print (\"     |----- [PDU] : \" + str(self.output['pdu_payload']))\n\
+      \                except:\n                    print(\"Invaild PDU Header\")\n\
+      \            else:\n                \"\"\"Data Physical Channel PDU\"\"\"\n\
+      \                print(\"Data Physical Channel PDU\")\n            \n      \
+      \      print (\"    [PAYLOAD] : [\"+self.output['payload']+\"]\",end='')\n \
+      \           print (\"    [LEN : \"+str(len),end='')\n            print (\" \
+      \   , CRC : \"+self.output['crc']+\"]\\n\")\n\n        \n        self.message_port_pub(pmt.intern(\"\
+      msg_out\"),pmt.intern(str(self.output)))\n\n    '''\n    PDU Help Dict\n   \
+      \ '''\n    PDU_Type={\n            '0000':'ADV_IND',\n            '0001':'ADV_DIRECT_IND',\n\
+      \            '0010':'ADV_NONCONN_IND',\n            '0011':'SCAN_REQ',  #AUX_SCAN_REQ\n\
+      \            '0100':'SCAN_RES',\n            '0101':'CONNECT_IND',   #AUX_CONNECT_REQ\n\
+      \            '0110':'ADV_SCAN_IND',\n            '0111':'ADV_EXT_IND',   #AUX_ADV_IND/AUX_SCAN_RSP/AUX_SYNC_IND/AUX_CHAIN_IND\n\
       \            '1000':'AUX_CONNECT_RSP'\n        }\n    PDU_Add={\n          \
       \  '0':'Public',\n            '1':'Random'\n        }\n    PDU_CHSEL={\n   \
       \         '0':'#1',\n            '1':'#2'\n        }\n        \n    '''\n  \
@@ -395,6 +399,13 @@ blocks:
       \ = {}\n\n            self.output['pdu_payload']['LLData_parse']['AA']=self.lsb2msb(LL_Data,0,4)\n\
       \            self.output['pdu_payload']['LLData_parse']['CRCInit']=self.lsb2msb(LL_Data,4,3)\n\
       \            self.output['pdu_payload']['LLData_parse']['WinSize']=self.lsb2msb(LL_Data,7,1)\n\
+      \            self.output['pdu_payload']['LLData_parse']['WinOffset']=self.lsb2msb(LL_Data,8,2)\n\
+      \            self.output['pdu_payload']['LLData_parse']['Interval']=self.lsb2msb(LL_Data,10,2)\n\
+      \            self.output['pdu_payload']['LLData_parse']['Latency']=self.lsb2msb(LL_Data,12,2)\n\
+      \            self.output['pdu_payload']['LLData_parse']['Timeout']=self.lsb2msb(LL_Data,14,2)\n\
+      \            self.output['pdu_payload']['LLData_parse']['ChM']=self.lsb2msb(LL_Data,16,5)\n\
+      \            HopSCA=self.lsb2msb(LL_Data,21,1)\n            self.output['pdu_payload']['LLData_parse']['Hop']=str(int(bin(int(HopSCA,base=16))[2:][-5:],2))\n\
+      \            self.output['pdu_payload']['LLData_parse']['SCA']=str(int(bin(int(HopSCA,base=16))[2:][:3],2))\n\
       \n\n    def lsb2msb(self,payload,start,length):\n        msb=\"\"\n        for\
       \ i in range(length):\n            msb += payload[start*2+length*2-2-i*2]+payload[start*2+length*2-1-i*2]\n\
       \        return msb\n\n\n    def reset_channel(self,channel):\n        self.channel\

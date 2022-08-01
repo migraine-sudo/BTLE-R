@@ -51,35 +51,43 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             CRCInit=0x555555
         crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit) #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])
         if crc_ca !=int(self.output['crc'],base=16): # CRC Check
-            print("[LOG] Drop packets [CRC wrong]\n")
+            #print("[LOG] Drop packets [CRC wrong]\n")
             return 0
 
         '''
-        LOG
+        Parse
         '''
-        print ("PACKETS —> ["+packet_str+"]")
-        print ('    [CH]:'+str(self.channel),end=' ')
-        print ('    [AA]:0x'+self.output['AA'].upper(),end='')
+
         if self.channel in [37,38,39]:
             """Advertising Physical Channel PDU"""
             self.ADV_HEAD_Parse(packet_str) ## Parse Header
             self.ADV_Payload_Parse(self.output['type'],self.output['payload']) ## Parse Payload
-            '''Log'''
-            try:
-                print ("    [Type]  : "+self.PDU_Type[self.output['type']],end=' ')
-                print ("    [ChSel] : "+self.PDU_CHSEL[self.output['ChSel']],end=' ')
-                print ("    [TxAdd] : "+self.PDU_Add[self.output['TxAdd']],end=' ')
-                print ("    [RxAdd] : "+self.PDU_Add[self.output['RxAdd']])
-                print ("     |----- [PDU] : " + str(self.output['pdu_payload']))
-            except:
-                print("Invaild PDU Header")
         else:
             """Data Physical Channel PDU"""
             print("Data Physical Channel PDU")
-        
-        print ("    [PAYLOAD] : ["+self.output['payload']+"]",end='')
-        print ("    [LEN : "+str(len),end='')
-        print ("    , CRC : "+self.output['crc']+"]\n")
+
+        """LOG"""
+        if self.PDU_Type[self.output['type']]=='CONNECT_IND':
+            print ("PACKETS —> ["+packet_str+"]")
+            print ('    [CH]:'+str(self.channel),end=' ')
+            print ('    [AA]:0x'+self.output['AA'].upper(),end='')
+            if self.channel in [37,38,39]:
+                """Advertising Physical Channel PDU"""      
+                try:
+                    print ("    [Type]  : "+self.PDU_Type[self.output['type']],end=' ')
+                    print ("    [ChSel] : "+self.PDU_CHSEL[self.output['ChSel']],end=' ')
+                    print ("    [TxAdd] : "+self.PDU_Add[self.output['TxAdd']],end=' ')
+                    print ("    [RxAdd] : "+self.PDU_Add[self.output['RxAdd']])
+                    print ("     |----- [PDU] : " + str(self.output['pdu_payload']))
+                except:
+                    print("Invaild PDU Header")
+            else:
+                """Data Physical Channel PDU"""
+                print("Data Physical Channel PDU")
+            
+            print ("    [PAYLOAD] : ["+self.output['payload']+"]",end='')
+            print ("    [LEN : "+str(len),end='')
+            print ("    , CRC : "+self.output['crc']+"]\n")
 
         
         self.message_port_pub(pmt.intern("msg_out"),pmt.intern(str(self.output)))
@@ -271,6 +279,14 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             self.output['pdu_payload']['LLData_parse']['AA']=self.lsb2msb(LL_Data,0,4)
             self.output['pdu_payload']['LLData_parse']['CRCInit']=self.lsb2msb(LL_Data,4,3)
             self.output['pdu_payload']['LLData_parse']['WinSize']=self.lsb2msb(LL_Data,7,1)
+            self.output['pdu_payload']['LLData_parse']['WinOffset']=self.lsb2msb(LL_Data,8,2)
+            self.output['pdu_payload']['LLData_parse']['Interval']=self.lsb2msb(LL_Data,10,2)
+            self.output['pdu_payload']['LLData_parse']['Latency']=self.lsb2msb(LL_Data,12,2)
+            self.output['pdu_payload']['LLData_parse']['Timeout']=self.lsb2msb(LL_Data,14,2)
+            self.output['pdu_payload']['LLData_parse']['ChM']=self.lsb2msb(LL_Data,16,5)
+            HopSCA=self.lsb2msb(LL_Data,21,1)
+            self.output['pdu_payload']['LLData_parse']['Hop']=str(int(bin(int(HopSCA,base=16))[2:][-5:],2))
+            self.output['pdu_payload']['LLData_parse']['SCA']=str(int(bin(int(HopSCA,base=16))[2:][:3],2))
 
 
     def lsb2msb(self,payload,start,length):
