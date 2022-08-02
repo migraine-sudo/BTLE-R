@@ -10,6 +10,9 @@ import pmt
 import time
 import binascii
 
+Debug = True
+
+
 class blk(gr.sync_block):  # other base classes are basic_block, decim_block, interp_block
     """Whiltening Blocks"""
 
@@ -67,7 +70,8 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             print("Data Physical Channel PDU")
 
         """LOG"""
-        if self.PDU_Type[self.output['type']]=='CONNECT_IND':
+        if Debug == True:
+        #if self.PDU_Type[self.output['type']]=='CONNECT_IND':
             print ("PACKETS —> ["+packet_str+"]")
             print ('    [CH]:'+str(self.channel),end=' ')
             print ('    [AA]:0x'+self.output['AA'].upper(),end='')

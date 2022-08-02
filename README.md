@@ -16,7 +16,7 @@ Tested runtime environment  *(but not required)* :
 - [gr-osmosdr](https://github.com/osmocom/gr-osmosdr) v*0.2.0.0*
 - [HackRF One](https://github.com/greatscottgadgets/hackrf) with firmware 2021.03.1
 
-# BUID&RUN
+# BUILD&RUN
 
 Install the HackRF driver and GNURadio components, and the default firmware of HACKRF ONE can be used.
 

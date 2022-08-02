@@ -270,13 +270,13 @@ blocks:
     CRCINIT: crc_init
     _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\n\"\"\"\n\nfrom email.headerregistry\
       \ import Address\nimport numpy as np\nfrom gnuradio import gr\nimport pmt\n\
-      import time\nimport binascii\n\nclass blk(gr.sync_block):  # other base classes\
-      \ are basic_block, decim_block, interp_block\n    \"\"\"Whiltening Blocks\"\"\
-      \"\n\n    def __init__(self, CHANNEL = 37,CRCINIT = '0x555555'):  # only default\
-      \ arguments here\n        \"\"\"arguments to this function show up as parameters\
-      \ in GRC\"\"\"\n        gr.sync_block.__init__(\n            self,\n       \
-      \     name='BLE PDU Decode',   # will show up in GRC\n            in_sig=None,\n\
-      \            out_sig=None\n        )\n        self.message_port_register_in(pmt.intern('msg_in'))\n\
+      import time\nimport binascii\n\nDebug = True\n\n\nclass blk(gr.sync_block):\
+      \  # other base classes are basic_block, decim_block, interp_block\n    \"\"\
+      \"Whiltening Blocks\"\"\"\n\n    def __init__(self, CHANNEL = 37,CRCINIT = '0x555555'):\
+      \  # only default arguments here\n        \"\"\"arguments to this function show\
+      \ up as parameters in GRC\"\"\"\n        gr.sync_block.__init__(\n         \
+      \   self,\n            name='BLE PDU Decode',   # will show up in GRC\n    \
+      \        in_sig=None,\n            out_sig=None\n        )\n        self.message_port_register_in(pmt.intern('msg_in'))\n\
       \        self.set_msg_handler(pmt.intern('msg_in'), self.handle_msg)\n     \
       \   self.message_port_register_out(pmt.intern('msg_out'))\n        # if an attribute\
       \ with the same name as a parameter is found,\n        # a callback is registered\
@@ -298,9 +298,9 @@ blocks:
       \           self.ADV_Payload_Parse(self.output['type'],self.output['payload'])\
       \ ## Parse Payload\n        else:\n            \"\"\"Data Physical Channel PDU\"\
       \"\"\n            print(\"Data Physical Channel PDU\")\n\n        \"\"\"LOG\"\
-      \"\"\n        if self.PDU_Type[self.output['type']]=='CONNECT_IND':\n      \
-      \      print (\"PACKETS \u2014> [\"+packet_str+\"]\")\n            print ('\
-      \    [CH]:'+str(self.channel),end=' ')\n            print ('    [AA]:0x'+self.output['AA'].upper(),end='')\n\
+      \"\"\n        if Debug == True:\n        #if self.PDU_Type[self.output['type']]=='CONNECT_IND':\n\
+      \            print (\"PACKETS \u2014> [\"+packet_str+\"]\")\n            print\
+      \ ('    [CH]:'+str(self.channel),end=' ')\n            print ('    [AA]:0x'+self.output['AA'].upper(),end='')\n\
       \            if self.channel in [37,38,39]:\n                \"\"\"Advertising\
       \ Physical Channel PDU\"\"\"      \n                try:\n                 \
       \   print (\"    [Type]  : \"+self.PDU_Type[self.output['type']],end=' ')\n\
