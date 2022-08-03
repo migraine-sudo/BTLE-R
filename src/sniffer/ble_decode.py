@@ -18,6 +18,7 @@ import signal
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
+from gnuradio import zeromq
 import epy_block_0
 import epy_block_1
 import epy_block_2
@@ -42,6 +43,7 @@ class ble_decode(gr.top_block):
         ##################################################
         # Blocks
         ##################################################
+        self.zeromq_pub_msg_sink_0 = zeromq.pub_msg_sink('tcp://*:52855', 0, True)
         self.osmosdr_source_0 = osmosdr.source(
             args="numchan=" + str(1) + " " + ""
         )
@@ -57,7 +59,7 @@ class ble_decode(gr.top_block):
         self.osmosdr_source_0.set_bb_gain(20, 0)
         self.osmosdr_source_0.set_antenna('', 0)
         self.osmosdr_source_0.set_bandwidth(2e6, 0)
-        self.epy_block_2 = epy_block_2.blk(CHANNEL=channel_id, CRCINIT=crc_init)
+        self.epy_block_2 = epy_block_2.blk(CHANNEL=channel_id, CRCINIT=crc_init, ADVADDRESS='')
         self.epy_block_1 = epy_block_1.blk(CHANNEL=channel_id)
         self.epy_block_0 = epy_block_0.blk(AA=access_address)
         self.digital_gfsk_demod_0 = digital.gfsk_demod(
@@ -77,6 +79,7 @@ class ble_decode(gr.top_block):
         ##################################################
         self.msg_connect((self.epy_block_0, 'msg_out'), (self.epy_block_1, 'msg_in'))
         self.msg_connect((self.epy_block_1, 'msg_out'), (self.epy_block_2, 'msg_in'))
+        self.msg_connect((self.epy_block_2, 'msg_out'), (self.zeromq_pub_msg_sink_0, 'in'))
         self.connect((self.blocks_throttle_0, 0), (self.digital_gfsk_demod_0, 0))
         self.connect((self.digital_gfsk_demod_0, 0), (self.epy_block_0, 0))
         self.connect((self.osmosdr_source_0, 0), (self.blocks_throttle_0, 0))

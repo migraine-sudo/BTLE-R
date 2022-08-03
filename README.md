@@ -67,8 +67,23 @@ sudo gnuradio-companion
 
 Run BTLE-R (in development). Use python to customize the baseband logic, and currently can complete the frequency hopping of the broadcast channel.
 
+**USAGE**
+
+```
+usage: BTLE-R.py [-h] [-v] [-m MAC] 
+
+Command Line Interface for BTLE-Radio Bluetooth Baseband Experiment Kit
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --version         show version and exit
+  -m MAC, --mac MAC     Filter packets by advertiser MAC
+```
+
+Example
+
 ```shell
-$ python3 BTLE-R.py
+ $ ./BTLE-R.py --mac e4:00:20:44:7c:d4
 ```
 
 ![BTLE-demo](./pic/BTLE-demo.gif)

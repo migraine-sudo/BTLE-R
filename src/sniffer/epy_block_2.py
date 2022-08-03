@@ -1,6 +1,5 @@
 """
 BLE_PDU_Decode Blocks:
-
 """
 
 from email.headerregistry import Address
@@ -10,13 +9,13 @@ import pmt
 import time
 import binascii
 
-Debug = True
+Debug = False
 
 
 class blk(gr.sync_block):  # other base classes are basic_block, decim_block, interp_block
     """Whiltening Blocks"""
 
-    def __init__(self, CHANNEL = 37,CRCINIT = '0x555555'):  # only default arguments here
+    def __init__(self, CHANNEL = 37,CRCINIT = '0x555555',ADVADDRESS = ''):  # only default arguments here
         """arguments to this function show up as parameters in GRC"""
         gr.sync_block.__init__(
             self,
@@ -31,7 +30,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         # a callback is registered (properties work, too).
         self.channel = CHANNEL
         self.crcinit = CRCINIT
-        
+        self.advA = ADVADDRESS
 
     def handle_msg(self,msg):
         self.output={'Channel':self.channel,'pdu_payload':{}}
@@ -65,6 +64,14 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             """Advertising Physical Channel PDU"""
             self.ADV_HEAD_Parse(packet_str) ## Parse Header
             self.ADV_Payload_Parse(self.output['type'],self.output['payload']) ## Parse Payload
+            try:
+                if self.output['pdu_payload']['AdvA']!="": 
+                    if self.advA.upper() !='' and self.advA.upper() != self.output['pdu_payload']['AdvA'].upper():
+                        #print("DROP")
+                        return False
+            except:
+                if self.advA.upper() !='':
+                    return False
         else:
             """Data Physical Channel PDU"""
             print("Data Physical Channel PDU")
@@ -92,7 +99,6 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             print ("    [PAYLOAD] : ["+self.output['payload']+"]",end='')
             print ("    [LEN : "+str(len),end='')
             print ("    , CRC : "+self.output['crc']+"]\n")
-
         
         self.message_port_pub(pmt.intern("msg_out"),pmt.intern(str(self.output)))
 
@@ -305,3 +311,6 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     
     def reset_crcinit(self,crcinit):
         self.crcinit = crcinit
+    
+    def reset_addr(self,addr):
+        self.advA = addr

@@ -60,8 +60,11 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             else:
                 index = bits_decode.find(packet2)
             
-            if len(bits_decode) - index >= 47*8:    # Drop packets
-                packets = bits_decode[index:index+47*8]
+            Octets = 257
+            #if len(bits_decode) - index >= 47*8:    # Drop packets
+            #    packets = bits_decode[index:index+47*8]
+            if len(bits_decode) - index >= Octets*8:    # Drop packets
+                packets = bits_decode[index:index+Octets*8]
             else:
                 #print("copy failed")
                 return len(input_items[0])   

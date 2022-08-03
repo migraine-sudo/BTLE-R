@@ -164,8 +164,10 @@ blocks:
       \      packet2 = PREAMBLE2+AA\n\n        if packet1 in bits_decode or packet2\
       \ in bits_decode :\n            if packet1 in bits_decode:\n               \
       \ index = bits_decode.find(packet1)\n            else:\n                index\
-      \ = bits_decode.find(packet2)\n            \n            if len(bits_decode)\
-      \ - index >= 47*8:    # Drop packets\n                packets = bits_decode[index:index+47*8]\n\
+      \ = bits_decode.find(packet2)\n            \n            Octets = 257\n    \
+      \        #if len(bits_decode) - index >= 47*8:    # Drop packets\n         \
+      \   #    packets = bits_decode[index:index+47*8]\n            if len(bits_decode)\
+      \ - index >= Octets*8:    # Drop packets\n                packets = bits_decode[index:index+Octets*8]\n\
       \            else:\n                #print(\"copy failed\")\n              \
       \  return len(input_items[0])   \n                         \n            if\
       \ packets[44*8:] == self.last_packets:  # Deduplication according to CRCs\n\
@@ -266,39 +268,45 @@ blocks:
 - name: epy_block_2
   id: epy_block
   parameters:
+    ADVADDRESS: ''''''
     CHANNEL: channel_id
     CRCINIT: crc_init
-    _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\n\"\"\"\n\nfrom email.headerregistry\
+    _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\"\"\"\n\nfrom email.headerregistry\
       \ import Address\nimport numpy as np\nfrom gnuradio import gr\nimport pmt\n\
-      import time\nimport binascii\n\nDebug = True\n\n\nclass blk(gr.sync_block):\
+      import time\nimport binascii\n\nDebug = False\n\n\nclass blk(gr.sync_block):\
       \  # other base classes are basic_block, decim_block, interp_block\n    \"\"\
-      \"Whiltening Blocks\"\"\"\n\n    def __init__(self, CHANNEL = 37,CRCINIT = '0x555555'):\
-      \  # only default arguments here\n        \"\"\"arguments to this function show\
-      \ up as parameters in GRC\"\"\"\n        gr.sync_block.__init__(\n         \
-      \   self,\n            name='BLE PDU Decode',   # will show up in GRC\n    \
-      \        in_sig=None,\n            out_sig=None\n        )\n        self.message_port_register_in(pmt.intern('msg_in'))\n\
+      \"Whiltening Blocks\"\"\"\n\n    def __init__(self, CHANNEL = 37,CRCINIT = '0x555555',ADVADDRESS\
+      \ = ''):  # only default arguments here\n        \"\"\"arguments to this function\
+      \ show up as parameters in GRC\"\"\"\n        gr.sync_block.__init__(\n    \
+      \        self,\n            name='BLE PDU Decode',   # will show up in GRC\n\
+      \            in_sig=None,\n            out_sig=None\n        )\n        self.message_port_register_in(pmt.intern('msg_in'))\n\
       \        self.set_msg_handler(pmt.intern('msg_in'), self.handle_msg)\n     \
       \   self.message_port_register_out(pmt.intern('msg_out'))\n        # if an attribute\
       \ with the same name as a parameter is found,\n        # a callback is registered\
       \ (properties work, too).\n        self.channel = CHANNEL\n        self.crcinit\
-      \ = CRCINIT\n        \n\n    def handle_msg(self,msg):\n        self.output={'Channel':self.channel,'pdu_payload':{}}\n\
-      \n        packets=pmt.symbol_to_string(msg)\n        packet_str = self.bit2str(packets)\
-      \ # Convert the bitstream to a string, modify the bits order\n        \n   \
-      \     len = self.PDU_Len(packet_str)\n        packet_str = packet_str[:len*2+20]\
-      \ # minus the excess at the end\n\n        # Start Parse PDU\n        self.AA_Gain(packet_str)\n\
-      \        self.PDU_Payload(packet_str)\n        self.PDU_CRC(packet_str)\n\n\
-      \        try:\n            CRCInit=int(self.crcinit,base=16)\n        except:\n\
-      \            print(\"[Warning] the type of CRCInit should be string,using 0x555555\
-      \ Default\")\n            CRCInit=0x555555\n        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit)\
+      \ = CRCINIT\n        self.advA = ADVADDRESS\n\n    def handle_msg(self,msg):\n\
+      \        self.output={'Channel':self.channel,'pdu_payload':{}}\n\n        packets=pmt.symbol_to_string(msg)\n\
+      \        packet_str = self.bit2str(packets) # Convert the bitstream to a string,\
+      \ modify the bits order\n        \n        len = self.PDU_Len(packet_str)\n\
+      \        packet_str = packet_str[:len*2+20] # minus the excess at the end\n\n\
+      \        # Start Parse PDU\n        self.AA_Gain(packet_str)\n        self.PDU_Payload(packet_str)\n\
+      \        self.PDU_CRC(packet_str)\n\n        try:\n            CRCInit=int(self.crcinit,base=16)\n\
+      \        except:\n            print(\"[Warning] the type of CRCInit should be\
+      \ string,using 0x555555 Default\")\n            CRCInit=0x555555\n        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit)\
       \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n        if crc_ca !=int(self.output['crc'],base=16):\
       \ # CRC Check\n            #print(\"[LOG] Drop packets [CRC wrong]\\n\")\n \
       \           return 0\n\n        '''\n        Parse\n        '''\n\n        if\
       \ self.channel in [37,38,39]:\n            \"\"\"Advertising Physical Channel\
       \ PDU\"\"\"\n            self.ADV_HEAD_Parse(packet_str) ## Parse Header\n \
       \           self.ADV_Payload_Parse(self.output['type'],self.output['payload'])\
-      \ ## Parse Payload\n        else:\n            \"\"\"Data Physical Channel PDU\"\
-      \"\"\n            print(\"Data Physical Channel PDU\")\n\n        \"\"\"LOG\"\
-      \"\"\n        if Debug == True:\n        #if self.PDU_Type[self.output['type']]=='CONNECT_IND':\n\
+      \ ## Parse Payload\n            try:\n                if self.output['pdu_payload']['AdvA']!=\"\
+      \": \n                    if self.advA.upper() !='' and self.advA.upper() !=\
+      \ self.output['pdu_payload']['AdvA'].upper():\n                        #print(\"\
+      DROP\")\n                        return False\n            except:\n       \
+      \         if self.advA.upper() !='':\n                    return False\n   \
+      \     else:\n            \"\"\"Data Physical Channel PDU\"\"\"\n           \
+      \ print(\"Data Physical Channel PDU\")\n\n        \"\"\"LOG\"\"\"\n        if\
+      \ Debug == True:\n        #if self.PDU_Type[self.output['type']]=='CONNECT_IND':\n\
       \            print (\"PACKETS \u2014> [\"+packet_str+\"]\")\n            print\
       \ ('    [CH]:'+str(self.channel),end=' ')\n            print ('    [AA]:0x'+self.output['AA'].upper(),end='')\n\
       \            if self.channel in [37,38,39]:\n                \"\"\"Advertising\
@@ -313,7 +321,7 @@ blocks:
       \                print(\"Data Physical Channel PDU\")\n            \n      \
       \      print (\"    [PAYLOAD] : [\"+self.output['payload']+\"]\",end='')\n \
       \           print (\"    [LEN : \"+str(len),end='')\n            print (\" \
-      \   , CRC : \"+self.output['crc']+\"]\\n\")\n\n        \n        self.message_port_pub(pmt.intern(\"\
+      \   , CRC : \"+self.output['crc']+\"]\\n\")\n        \n        self.message_port_pub(pmt.intern(\"\
       msg_out\"),pmt.intern(str(self.output)))\n\n    '''\n    PDU Help Dict\n   \
       \ '''\n    PDU_Type={\n            '0000':'ADV_IND',\n            '0001':'ADV_DIRECT_IND',\n\
       \            '0010':'ADV_NONCONN_IND',\n            '0011':'SCAN_REQ',  #AUX_SCAN_REQ\n\
@@ -410,22 +418,22 @@ blocks:
       \ i in range(length):\n            msb += payload[start*2+length*2-2-i*2]+payload[start*2+length*2-1-i*2]\n\
       \        return msb\n\n\n    def reset_channel(self,channel):\n        self.channel\
       \ = channel\n    \n    def reset_crcinit(self,crcinit):\n        self.crcinit\
-      \ = crcinit"
+      \ = crcinit\n    \n    def reset_addr(self,addr):\n        self.advA = addr"
     affinity: ''
     alias: ''
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
   states:
-    _io_cache: ('BLE PDU Decode', 'blk', [('CHANNEL', '37'), ('CRCINIT', "'0x555555'")],
-      [('msg_in', 'message', 1)], [('msg_out', 'message', 1)], 'Whiltening Blocks',
-      [])
+    _io_cache: ('BLE PDU Decode', 'blk', [('CHANNEL', '37'), ('CRCINIT', "'0x555555'"),
+      ('ADVADDRESS', "''")], [('msg_in', 'message', 1)], [('msg_out', 'message', 1)],
+      'Whiltening Blocks', [])
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [864, 332.0]
+    coordinate: [640, 340.0]
     rotation: 0
-    state: true
+    state: enabled
 - name: osmosdr_source_0
   id: osmosdr_source
   parameters:
@@ -783,12 +791,29 @@ blocks:
     coordinate: [80, 168.0]
     rotation: 0
     state: true
+- name: zeromq_pub_msg_sink_0
+  id: zeromq_pub_msg_sink
+  parameters:
+    address: tcp://*:52855
+    affinity: ''
+    alias: ''
+    bind: 'True'
+    comment: ''
+    timeout: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [864, 340.0]
+    rotation: 0
+    state: true
 
 connections:
 - [blocks_throttle_0, '0', digital_gfsk_demod_0, '0']
 - [digital_gfsk_demod_0, '0', epy_block_0, '0']
 - [epy_block_0, msg_out, epy_block_1, msg_in]
 - [epy_block_1, msg_out, epy_block_2, msg_in]
+- [epy_block_2, msg_out, zeromq_pub_msg_sink_0, in]
 - [osmosdr_source_0, '0', blocks_throttle_0, '0']
 
 metadata:
