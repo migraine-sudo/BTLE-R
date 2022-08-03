@@ -65,21 +65,41 @@ sudo gnuradio-companion
 
 ## RUN
 
-1. Run GRC. The flow chart is mainly used to develop and debug BTLE-R. You can manually set the frequency band, AccessAddress, etc. in the parameters. If you need to perform automatic channel selection and connection tracking, please use BTLE-R directly.
+Run BTLE-R (in development). Use python to customize the baseband logic, and currently can complete the frequency hopping of the broadcast channel.
 
-   To run the flow graph in GNURadioCompanion or run the python script ble_decode.py, use the following command.
+```shell
+$ python3 BTLE-R.py
+```
+
+![BTLE-demo](./pic/BTLE-demo.gif)
+
+**[For Debug and Dev]**
+
+Run GRC. The flow chart is mainly used to develop and debug BTLE-R. You can manually set the frequency band, AccessAddress, etc. in the parameters. If you need to perform automatic channel selection and connection tracking, please use BTLE-R directly.
+
+To run the flow graph in GNURadioCompanion or run the python script ble_decode.py, use the following command.
 
 ```shell
 $ python3 ble_decode.py
 ```
 
-![BLE_ADV_Capture](./pic/BLE_ADV_Capture.png)
 
-2. Run BTLE-R (in development). Use python to customize the baseband logic, and currently can complete the frequency hopping of the broadcast channel.
 
-```shell
-$ python3 BTLE-R.py
-```
+## SNIFF
+
+BTLE Air Interface Capture
+
+1. Advertising physical channel packets Capture
+
+   - Advertising/Scanning PDUs Capture
+
+   ![BLE_ADV_Capture](./pic/BLE_ADV_Capture.png)
+
+   - Initiating PDUs Capture
+
+     e.g. CONNECT_IND packet capture，parsing the packet can be used to obtain key information of the link connection, including frequency hopping algorithm (and ChannelMap), CRC initial data and Connect Interval, etc.
+
+     ![BLE_CONNECT](./pic/BLE_CONNECT.png)
 
 
 
@@ -88,17 +108,15 @@ $ python3 BTLE-R.py
 ![GRC-Sniffer](./pic/GRC-Sniffer.png)Moudle Design
 
 - GFSKDemod (GNURadio Default)
-
 - BlE Packets Gain
-
 - Data Whiting/De-Whiting
-
 - CRC Check
 - PDU Parse(Only Advertising Physical Channel，so far)
+- Hop channel
 
 In the Plan
 
 - Data Physical Channel
 
-- Hop channel
+- Channel Selection
 - Transfer Mode(big project，maybe another)
