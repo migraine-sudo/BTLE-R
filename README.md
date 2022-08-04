@@ -82,11 +82,21 @@ optional arguments:
 
 Example
 
+```
+ $ ./BTLE-R.py
+```
+
+![BTLE-demo](./pic/BTLE-demo.gif)
+
+
+
 ```shell
  $ ./BTLE-R.py --mac e4:00:20:44:7c:d4
 ```
 
-![BTLE-demo](./pic/BTLE-demo.gif)
+![BTLE-demo2](./pic/BTLE-demo2.gif)
+
+
 
 **[For Debug and Dev]**
 
@@ -120,7 +130,7 @@ BTLE Air Interface Capture
 
 # Doc
 
-![GRC-Sniffer](./pic/GRC-Sniffer.png)Moudle Design
+![GRC-Sniffer2](./pic/GRC-Sniffer2.png)Moudle Design
 
 - GFSKDemod (GNURadio Default)
 - BlE Packets Gain
