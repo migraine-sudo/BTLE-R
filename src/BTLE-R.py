@@ -16,7 +16,7 @@ import threading
 import getopt
 
 usage = """
-usage: BTLE-R.py [-h] [-v] [-m MAC] 
+usage: BTLE-R.py [-h] [-v] [-m MAC]
 
 Command Line Interface for BTLE-Radio Bluetooth Baseband Experiment Kit
 
@@ -35,16 +35,19 @@ class RADIO:
     def __init__(self,tb) -> None:
         self.tb = tb    #GNURadio top_block_cls
         self.sniff_adv_on = False
-        # start threads
-        thread_sniff = threading.Thread(target=self.hop_on_adv_cha)
-        thread_sniff.start()
 
+        # Start Threads
+        self.thread_sniff = threading.Thread(target=self.hop_on_adv_cha)
+        self.thread_sniff.setDaemon(True)
+        self.thread_sniff.start()
+        
     def filter(self,addr=''):
         if addr!='':
             self.tb.epy_block_2.reset_addr(addr)
 
     def start_sniff(self):
         self.sniff_adv_on = True  
+        print("[*] Start Sniff")
 
     def stop_sniff(self):
         self.sniff_adv_on = False
@@ -156,11 +159,11 @@ def main(top_block_cls=ble_decode.ble_decode, options=None):
         socket.setsockopt_string(zmq.SUBSCRIBE,"")
         return socket
 
+    socket = init_zmq("tcp://127.0.0.1:52855") # Init ZMQ
+
     signal.signal(signal.SIGINT, sig_handler)
     signal.signal(signal.SIGTERM, sig_handler)
     tb.start() 
-
-    socket = init_zmq("tcp://127.0.0.1:52855") # Init ZMQ
 
     # Radio Control
     radio = RADIO(tb)
