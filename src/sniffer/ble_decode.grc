@@ -154,45 +154,49 @@ blocks:
       \            out_sig=None\n        )\n        self.message_port_register_out(pmt.intern('msg_out'))\n\
       \n        # if an attribute with the same name as a parameter is found,\n  \
       \      # a callback is registered (properties work, too).\n        self.AccessAddress\
-      \ = AA\n        self.last_packets=\"\"\n\n    def work(self, input_items, output_items):\n\
-      \        bits_stream=input_items[0]\n        bits_decode=\"\"\n        for x\
-      \ in bits_stream:  \n            bits_decode+=str(x)\n\n        if self.AccessAddress!='':\n\
-      \            AA =bin(int(self.AccessAddress,base=16))[2:].zfill(8*4)[::-1]\n\
+      \ = AA\n        self.last_packets=\"\"\n        self.packets_buf = \"\"\n\n\
+      \    def work(self, input_items, output_items):\n        bits_stream=input_items[0]\n\
+      \        bits_decode=\"\"\n        Octets = 257 #47\n\n        for x in bits_stream:\
+      \  \n            bits_decode+=str(x)\n\n        # Fix packets cut\n        if\
+      \ len(self.packets_buf)!=0:\n            #print(\"fix packets\")\n         \
+      \   self.packets_buf += bits_decode[:Octets-len(self.packets_buf)]\n       \
+      \     self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(self.packets_buf))\n\
+      \            self.packets_buf = \"\"\n            return len(input_items[0])\n\
+      \n        if self.AccessAddress!='':\n            AA =bin(int(self.AccessAddress,base=16))[2:].zfill(8*4)[::-1]\n\
       \        else:\n            AA=\"\"\n        PREAMBLE=\"01010101\" # 0xaa reverse\n\
       \        PREAMBLE2=\"10101010\" # 0x55 reverse\n        #AA = \"01101011011111011001000101110001\"\
       \ #Access Address = 0x8E89BED6\n        \n        packet1 = PREAMBLE+AA\n  \
       \      packet2 = PREAMBLE2+AA\n\n        if packet1 in bits_decode or packet2\
       \ in bits_decode :\n            if packet1 in bits_decode:\n               \
       \ index = bits_decode.find(packet1)\n            else:\n                index\
-      \ = bits_decode.find(packet2)\n            \n            Octets = 257\n    \
-      \        #if len(bits_decode) - index >= 47*8:    # Drop packets\n         \
-      \   #    packets = bits_decode[index:index+47*8]\n            if len(bits_decode)\
-      \ - index >= Octets*8:    # Drop packets\n                packets = bits_decode[index:index+Octets*8]\n\
-      \            else:\n                #print(\"copy failed\")\n              \
-      \  return len(input_items[0])   \n                         \n            if\
-      \ packets[44*8:] == self.last_packets:  # Deduplication according to CRCs\n\
-      \                return len(input_items[0]) \n            else:\n          \
-      \      self.last_packets=packets[44*8:]\n                \n                #\
-      \ Debug Log\n                '''\n                print(\"\\n[\",end='')\n \
-      \               index=0\n                for i in range(0,47):\n           \
-      \         Bytes=[packets[x] for x in range(index,index+4)]\n               \
-      \     Bytes2=[packets[x] for x in range(index+4,index+8)]\n                \
-      \    print(\"0x\"+format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\"\
-      .join(Bytes[::-1]),2),'x'),end=' ') # Bits need reverse\n                  \
-      \  index+=8                \n                print(\"]\")\n                '''\n\
-      \                self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(packets))\n\
-      \                return len(input_items[0])\n        '''\n        \n       \
-      \ if packet2 in bits_decode:\n            index = bits_decode.find(packet2)\n\
-      \            print(\"[\",end='')\n            for i in range(0,47):\n      \
-      \          try:\n                    Bytes=[bits_decode[x] for x in range(index,index+4)]\n\
-      \                    Bytes2=[bits_decode[x] for x in range(index+4,index+8)]\n\
-      \                    print(\"0x\"+format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\
-      \".join(Bytes[::-1]),2),'x'),end=' ') # Bits need reverse\n                except:\n\
-      \                    print(\"decode fail\")\n                    break    \n\
-      \                index+=8\n            print(\"]\")\n        \n        '''\n\
-      \        return len(input_items[0])\n        #return len(output_items[0])\n\
-      \        #output_items[0][:] = input_items[0] * self.example_param\n\n    def\
-      \ reset_accaddr(self,aa):\n        self.AccessAddress = aa"
+      \ = bits_decode.find(packet2)\n            \n            if len(bits_decode)\
+      \ - index >= Octets*8:    # Cut pakcets\n                packets = bits_decode[index:index+Octets*8]\n\
+      \            else:\n                self.packets_buf = bits_decode[index:] #\
+      \ Fix packets\n                return len(input_items[0])   \n            \n\
+      \            '''\n            if packets[(Octets-3)*8:] == self.last_packets:\
+      \  # Deduplication according to CRCs\n                return len(input_items[0])\
+      \ \n            else:\n                self.last_packets=packets[(Octets-3)*8:]\n\
+      \            '''\n            if True:\n                # Debug Log\n      \
+      \          '''\n                print(\"\\n[\",end='')\n                index=0\n\
+      \                for i in range(0,47):\n                    Bytes=[packets[x]\
+      \ for x in range(index,index+4)]\n                    Bytes2=[packets[x] for\
+      \ x in range(index+4,index+8)]\n                    print(\"0x\"+format(int(\"\
+      \".join(Bytes2[::-1]),2),'x')+format(int(\"\".join(Bytes[::-1]),2),'x'),end='\
+      \ ') # Bits need reverse\n                    index+=8                \n   \
+      \             print(\"]\")\n                '''\n                self.message_port_pub(pmt.intern(\"\
+      msg_out\"),pmt.intern(packets))\n                return len(input_items[0])\n\
+      \        '''\n        \n        if packet2 in bits_decode:\n            index\
+      \ = bits_decode.find(packet2)\n            print(\"[\",end='')\n           \
+      \ for i in range(0,47):\n                try:\n                    Bytes=[bits_decode[x]\
+      \ for x in range(index,index+4)]\n                    Bytes2=[bits_decode[x]\
+      \ for x in range(index+4,index+8)]\n                    print(\"0x\"+format(int(\"\
+      \".join(Bytes2[::-1]),2),'x')+format(int(\"\".join(Bytes[::-1]),2),'x'),end='\
+      \ ') # Bits need reverse\n                except:\n                    print(\"\
+      decode fail\")\n                    break    \n                index+=8\n  \
+      \          print(\"]\")\n        \n        '''\n        return len(input_items[0])\n\
+      \        #return len(output_items[0])\n        #output_items[0][:] = input_items[0]\
+      \ * self.example_param\n\n    def reset_accaddr(self,aa):\n        self.AccessAddress\
+      \ = aa"
     affinity: ''
     alias: ''
     comment: ''
@@ -227,7 +231,7 @@ blocks:
       \ (properties work, too).\n        self.channel = CHANNEL\n        self.packets_pool=[]\n\
       \n    def handle_msg(self,msg):\n        packets=pmt.symbol_to_string(msg)\n\
       \        if packets in self.packets_pool:\n            if len(self.packets_pool)\
-      \ >100:\n                self.packets_pool=[]\n                #print(\"clear\"\
+      \ > 5:\n                self.packets_pool=[]\n                #print(\"clear\"\
       )\n            #print(\"pass\")\n            return 0\n        \n        self.packets_pool.append(packets)\n\
       \        index=0\n        packets_after = self.whitening(self.channel,packets)\n\
       \        self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(packets_after))\n\
@@ -271,15 +275,16 @@ blocks:
     ADVADDRESS: ''''''
     CHANNEL: channel_id
     CRCINIT: crc_init
-    _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\"\"\"\n\nfrom email.headerregistry\
-      \ import Address\nimport numpy as np\nfrom gnuradio import gr\nimport pmt\n\
-      import time\nimport binascii\n\nDebug = False\n\n\nclass blk(gr.sync_block):\
-      \  # other base classes are basic_block, decim_block, interp_block\n    \"\"\
-      \"Whiltening Blocks\"\"\"\n\n    def __init__(self, CHANNEL = 37,CRCINIT = '0x555555',ADVADDRESS\
-      \ = ''):  # only default arguments here\n        \"\"\"arguments to this function\
-      \ show up as parameters in GRC\"\"\"\n        gr.sync_block.__init__(\n    \
-      \        self,\n            name='BLE PDU Decode',   # will show up in GRC\n\
-      \            in_sig=None,\n            out_sig=None\n        )\n        self.message_port_register_in(pmt.intern('msg_in'))\n\
+    _source_code: "\"\"\"\nBLE_PDU_Decode Blocks:\n\"\"\"\n\nfrom distutils.debug\
+      \ import DEBUG\nfrom email.headerregistry import Address\nimport numpy as np\n\
+      from gnuradio import gr\nimport pmt\nimport time\nimport binascii\n\nDebug =\
+      \ False\n\n\nclass blk(gr.sync_block):  # other base classes are basic_block,\
+      \ decim_block, interp_block\n    \"\"\"Whiltening Blocks\"\"\"\n\n    def __init__(self,\
+      \ CHANNEL = 37,CRCINIT = '0x555555',ADVADDRESS = ''):  # only default arguments\
+      \ here\n        \"\"\"arguments to this function show up as parameters in GRC\"\
+      \"\"\n        gr.sync_block.__init__(\n            self,\n            name='BLE\
+      \ PDU Decode',   # will show up in GRC\n            in_sig=None,\n         \
+      \   out_sig=None\n        )\n        self.message_port_register_in(pmt.intern('msg_in'))\n\
       \        self.set_msg_handler(pmt.intern('msg_in'), self.handle_msg)\n     \
       \   self.message_port_register_out(pmt.intern('msg_out'))\n        # if an attribute\
       \ with the same name as a parameter is found,\n        # a callback is registered\
@@ -294,11 +299,11 @@ blocks:
       \        except:\n            print(\"[Warning] the type of CRCInit should be\
       \ string,using 0x555555 Default\")\n            CRCInit=0x555555\n        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit)\
       \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n        if crc_ca !=int(self.output['crc'],base=16):\
-      \ # CRC Check\n            #print(\"[LOG] Drop packets [CRC wrong]\\n\")\n \
-      \           return 0\n\n        '''\n        Parse\n        '''\n\n        if\
-      \ self.channel in [37,38,39]:\n            \"\"\"Advertising Physical Channel\
-      \ PDU\"\"\"\n            self.ADV_HEAD_Parse(packet_str) ## Parse Header\n \
-      \           self.ADV_Payload_Parse(self.output['type'],self.output['payload'])\
+      \ # CRC Check\n            if DEBUG:\n                print(\"[LOG] Drop packets\
+      \ [CRC wrong]\\n\")\n            return 0\n\n        '''\n        Parse\n  \
+      \      '''\n\n        if self.channel in [37,38,39]:\n            \"\"\"Advertising\
+      \ Physical Channel PDU\"\"\"\n            self.ADV_HEAD_Parse(packet_str) ##\
+      \ Parse Header\n            self.ADV_Payload_Parse(self.output['type'],self.output['payload'])\
       \ ## Parse Payload\n            try:\n                if self.output['pdu_payload']['AdvA']!=\"\
       \": \n                    if self.advA.upper() !='' and self.advA.upper() !=\
       \ self.output['pdu_payload']['AdvA'].upper():\n                        #print(\"\
@@ -381,41 +386,46 @@ blocks:
       \        self.output['TxAdd']=pdu_TxAdd\n        self.output['RxAdd']=pdu_RxAdd\n\
       \n    '''\n    ADV Payload Decode\n    Supported PDU Type\n        'ADV_IND','ADV_DIRECT_IND','ADV_NONCONN_IND','ADV_SCAN_IND','SCAN_RSP','SCAN_REQ','CONNECT_IND'\n\
       \    Unsupported PDU Type\n        'AUX_*'\n    '''\n    \n    def ADV_Payload_Parse(self,type,payload):\n\
-      \        if self.PDU_Type[type] in ['ADV_IND','ADV_DIRECT_IND','ADV_NONCONN_IND','ADV_SCAN_IND','SCAN_RSP']:\n\
-      \            AdvAddress = \"\"\n            for i in range(6):\n           \
-      \     AdvAddress += payload[10-i*2]+payload[11-i*2]+\":\"\n            self.output['pdu_payload']['AdvA']=AdvAddress[:-1]\n\
-      \            #self.output['pdu_payload']['AdvA_test']=self.lsb2msb(payload,0,6)\n\
-      \n            if self.PDU_Type[type] in ['ADV_IND','ADV_NONCONN_IND','ADV_SCAN_IND']:\n\
-      \                self.output['pdu_payload']['AdvData']=payload[12:]\n      \
-      \      elif self.PDU_Type[type] == 'SCAN_RSP':\n                self.output['pdu_payload']['ScanRspData']=payload[12:]\n\
-      \            elif self.PDU_Type[type] == 'ADV_DIRECT_IND':\n               \
-      \ TargetA = \"\"\n                for i in range(6):\n                    TargetA\
-      \ += payload[22-i*2]+payload[23-i*2]+\":\"\n                self.output['pdu_payload']['TargetA']=TargetA[:-1]\n\
-      \n        if self.PDU_Type[type] in ['SCAN_REQ']:\n            ScanA = \"\"\n\
-      \            AdvA = \"\"\n            for i in range(6):\n                ScanA\
-      \ += payload[10-i*2]+payload[11-i*2]+\":\"\n            self.output['pdu_payload']['ScanA']=ScanA[:-1]\n\
-      \            for i in range(6):\n                AdvA += payload[22-i*2]+payload[23-i*2]+\"\
-      :\"\n                self.output['pdu_payload']['AdvA']=AdvA[:-1]\n\n      \
-      \  # Most Important Part\n        if self.PDU_Type[type] in ['CONNECT_IND']:\n\
-      \            InitA = AdvA = \"\"\n            for i in range(6):\n         \
-      \       InitA += payload[10-i*2]+payload[11-i*2]+\":\"\n            self.output['pdu_payload']['InitA']=InitA[:-1]\n\
-      \            for i in range(6):\n                AdvA += payload[22-i*2]+payload[23-i*2]+\"\
-      :\"\n                self.output['pdu_payload']['AdvA'] = AdvA[:-1]\n      \
-      \      # LL_Data Parse    \n            AA = CRCinit = WinSize = Interval =\
-      \ Latency = Timeout = ChM = Hop = SCA = \"\"\n            LL_Data=payload[24:]\n\
-      \            self.output['pdu_payload']['LLData'] = LL_Data\n            self.output['pdu_payload']['LLData_parse']\
-      \ = {}\n\n            self.output['pdu_payload']['LLData_parse']['AA']=self.lsb2msb(LL_Data,0,4)\n\
-      \            self.output['pdu_payload']['LLData_parse']['CRCInit']=self.lsb2msb(LL_Data,4,3)\n\
-      \            self.output['pdu_payload']['LLData_parse']['WinSize']=self.lsb2msb(LL_Data,7,1)\n\
-      \            self.output['pdu_payload']['LLData_parse']['WinOffset']=self.lsb2msb(LL_Data,8,2)\n\
-      \            self.output['pdu_payload']['LLData_parse']['Interval']=self.lsb2msb(LL_Data,10,2)\n\
-      \            self.output['pdu_payload']['LLData_parse']['Latency']=self.lsb2msb(LL_Data,12,2)\n\
-      \            self.output['pdu_payload']['LLData_parse']['Timeout']=self.lsb2msb(LL_Data,14,2)\n\
-      \            self.output['pdu_payload']['LLData_parse']['ChM']=self.lsb2msb(LL_Data,16,5)\n\
-      \            HopSCA=self.lsb2msb(LL_Data,21,1)\n            self.output['pdu_payload']['LLData_parse']['Hop']=str(int(bin(int(HopSCA,base=16))[2:][-5:],2))\n\
-      \            self.output['pdu_payload']['LLData_parse']['SCA']=str(int(bin(int(HopSCA,base=16))[2:][:3],2))\n\
-      \n\n    def lsb2msb(self,payload,start,length):\n        msb=\"\"\n        for\
-      \ i in range(length):\n            msb += payload[start*2+length*2-2-i*2]+payload[start*2+length*2-1-i*2]\n\
+      \        try:\n            if self.PDU_Type[type] in ['ADV_IND','ADV_DIRECT_IND','ADV_NONCONN_IND','ADV_SCAN_IND','SCAN_RSP']:\n\
+      \                AdvAddress = \"\"\n                for i in range(6):\n   \
+      \                 AdvAddress += payload[10-i*2]+payload[11-i*2]+\":\"\n    \
+      \            self.output['pdu_payload']['AdvA']=AdvAddress[:-1]\n          \
+      \      #self.output['pdu_payload']['AdvA_test']=self.lsb2msb(payload,0,6)\n\n\
+      \                if self.PDU_Type[type] in ['ADV_IND','ADV_NONCONN_IND','ADV_SCAN_IND']:\n\
+      \                    self.output['pdu_payload']['AdvData']=payload[12:]\n  \
+      \              elif self.PDU_Type[type] == 'SCAN_RSP':\n                   \
+      \ self.output['pdu_payload']['ScanRspData']=payload[12:]\n                elif\
+      \ self.PDU_Type[type] == 'ADV_DIRECT_IND':\n                    TargetA = \"\
+      \"\n                    for i in range(6):\n                        TargetA\
+      \ += payload[22-i*2]+payload[23-i*2]+\":\"\n                    self.output['pdu_payload']['TargetA']=TargetA[:-1]\n\
+      \n            if self.PDU_Type[type] in ['SCAN_REQ']:\n                ScanA\
+      \ = \"\"\n                AdvA = \"\"\n                for i in range(6):\n\
+      \                    ScanA += payload[10-i*2]+payload[11-i*2]+\":\"\n      \
+      \          self.output['pdu_payload']['ScanA']=ScanA[:-1]\n                for\
+      \ i in range(6):\n                    AdvA += payload[22-i*2]+payload[23-i*2]+\"\
+      :\"\n                    self.output['pdu_payload']['AdvA']=AdvA[:-1]\n\n  \
+      \          # Most Important Part\n            if self.PDU_Type[type] in ['CONNECT_IND']:\n\
+      \                InitA = AdvA = \"\"\n                for i in range(6):\n \
+      \                   InitA += payload[10-i*2]+payload[11-i*2]+\":\"\n       \
+      \         self.output['pdu_payload']['InitA']=InitA[:-1]\n                for\
+      \ i in range(6):\n                    AdvA += payload[22-i*2]+payload[23-i*2]+\"\
+      :\"\n                    self.output['pdu_payload']['AdvA'] = AdvA[:-1]\n  \
+      \              # LL_Data Parse    \n                AA = CRCinit = WinSize =\
+      \ Interval = Latency = Timeout = ChM = Hop = SCA = \"\"\n                LL_Data=payload[24:]\n\
+      \                self.output['pdu_payload']['LLData'] = LL_Data\n          \
+      \      self.output['pdu_payload']['LLData_parse'] = {}\n\n                self.output['pdu_payload']['LLData_parse']['AA']=self.lsb2msb(LL_Data,0,4)\n\
+      \                self.output['pdu_payload']['LLData_parse']['CRCInit']=self.lsb2msb(LL_Data,4,3)\n\
+      \                self.output['pdu_payload']['LLData_parse']['WinSize']=self.lsb2msb(LL_Data,7,1)\n\
+      \                self.output['pdu_payload']['LLData_parse']['WinOffset']=self.lsb2msb(LL_Data,8,2)\n\
+      \                self.output['pdu_payload']['LLData_parse']['Interval']=self.lsb2msb(LL_Data,10,2)\n\
+      \                self.output['pdu_payload']['LLData_parse']['Latency']=self.lsb2msb(LL_Data,12,2)\n\
+      \                self.output['pdu_payload']['LLData_parse']['Timeout']=self.lsb2msb(LL_Data,14,2)\n\
+      \                self.output['pdu_payload']['LLData_parse']['ChM']=self.lsb2msb(LL_Data,16,5)\n\
+      \                HopSCA=self.lsb2msb(LL_Data,21,1)\n                self.output['pdu_payload']['LLData_parse']['Hop']=str(int(bin(int(HopSCA,base=16))[2:][-5:],2))\n\
+      \                self.output['pdu_payload']['LLData_parse']['SCA']=str(int(bin(int(HopSCA,base=16))[2:][:3],2))\n\
+      \        except:\n            print(\"[Error] Invaild PDU Type\")\n\n    def\
+      \ lsb2msb(self,payload,start,length):\n        msb=\"\"\n        for i in range(length):\n\
+      \            msb += payload[start*2+length*2-2-i*2]+payload[start*2+length*2-1-i*2]\n\
       \        return msb\n\n\n    def reset_channel(self,channel):\n        self.channel\
       \ = channel\n    \n    def reset_crcinit(self,crcinit):\n        self.crcinit\
       \ = crcinit\n    \n    def reset_addr(self,addr):\n        self.advA = addr"
@@ -431,7 +441,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [640, 336.0]
+    coordinate: [648, 336.0]
     rotation: 0
     state: enabled
 - name: osmosdr_source_0

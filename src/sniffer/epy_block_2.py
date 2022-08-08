@@ -2,6 +2,7 @@
 BLE_PDU_Decode Blocks:
 """
 
+from distutils.debug import DEBUG
 from email.headerregistry import Address
 import numpy as np
 from gnuradio import gr
@@ -53,7 +54,8 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             CRCInit=0x555555
         crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit) #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])
         if crc_ca !=int(self.output['crc'],base=16): # CRC Check
-            #print("[LOG] Drop packets [CRC wrong]\n")
+            if DEBUG:
+                print("[LOG] Drop packets [CRC wrong]\n")
             return 0
 
         '''
@@ -244,60 +246,62 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     '''
     
     def ADV_Payload_Parse(self,type,payload):
-        if self.PDU_Type[type] in ['ADV_IND','ADV_DIRECT_IND','ADV_NONCONN_IND','ADV_SCAN_IND','SCAN_RSP']:
-            AdvAddress = ""
-            for i in range(6):
-                AdvAddress += payload[10-i*2]+payload[11-i*2]+":"
-            self.output['pdu_payload']['AdvA']=AdvAddress[:-1]
-            #self.output['pdu_payload']['AdvA_test']=self.lsb2msb(payload,0,6)
-
-            if self.PDU_Type[type] in ['ADV_IND','ADV_NONCONN_IND','ADV_SCAN_IND']:
-                self.output['pdu_payload']['AdvData']=payload[12:]
-            elif self.PDU_Type[type] == 'SCAN_RSP':
-                self.output['pdu_payload']['ScanRspData']=payload[12:]
-            elif self.PDU_Type[type] == 'ADV_DIRECT_IND':
-                TargetA = ""
+        try:
+            if self.PDU_Type[type] in ['ADV_IND','ADV_DIRECT_IND','ADV_NONCONN_IND','ADV_SCAN_IND','SCAN_RSP']:
+                AdvAddress = ""
                 for i in range(6):
-                    TargetA += payload[22-i*2]+payload[23-i*2]+":"
-                self.output['pdu_payload']['TargetA']=TargetA[:-1]
+                    AdvAddress += payload[10-i*2]+payload[11-i*2]+":"
+                self.output['pdu_payload']['AdvA']=AdvAddress[:-1]
+                #self.output['pdu_payload']['AdvA_test']=self.lsb2msb(payload,0,6)
 
-        if self.PDU_Type[type] in ['SCAN_REQ']:
-            ScanA = ""
-            AdvA = ""
-            for i in range(6):
-                ScanA += payload[10-i*2]+payload[11-i*2]+":"
-            self.output['pdu_payload']['ScanA']=ScanA[:-1]
-            for i in range(6):
-                AdvA += payload[22-i*2]+payload[23-i*2]+":"
-                self.output['pdu_payload']['AdvA']=AdvA[:-1]
+                if self.PDU_Type[type] in ['ADV_IND','ADV_NONCONN_IND','ADV_SCAN_IND']:
+                    self.output['pdu_payload']['AdvData']=payload[12:]
+                elif self.PDU_Type[type] == 'SCAN_RSP':
+                    self.output['pdu_payload']['ScanRspData']=payload[12:]
+                elif self.PDU_Type[type] == 'ADV_DIRECT_IND':
+                    TargetA = ""
+                    for i in range(6):
+                        TargetA += payload[22-i*2]+payload[23-i*2]+":"
+                    self.output['pdu_payload']['TargetA']=TargetA[:-1]
 
-        # Most Important Part
-        if self.PDU_Type[type] in ['CONNECT_IND']:
-            InitA = AdvA = ""
-            for i in range(6):
-                InitA += payload[10-i*2]+payload[11-i*2]+":"
-            self.output['pdu_payload']['InitA']=InitA[:-1]
-            for i in range(6):
-                AdvA += payload[22-i*2]+payload[23-i*2]+":"
-                self.output['pdu_payload']['AdvA'] = AdvA[:-1]
-            # LL_Data Parse    
-            AA = CRCinit = WinSize = Interval = Latency = Timeout = ChM = Hop = SCA = ""
-            LL_Data=payload[24:]
-            self.output['pdu_payload']['LLData'] = LL_Data
-            self.output['pdu_payload']['LLData_parse'] = {}
+            if self.PDU_Type[type] in ['SCAN_REQ']:
+                ScanA = ""
+                AdvA = ""
+                for i in range(6):
+                    ScanA += payload[10-i*2]+payload[11-i*2]+":"
+                self.output['pdu_payload']['ScanA']=ScanA[:-1]
+                for i in range(6):
+                    AdvA += payload[22-i*2]+payload[23-i*2]+":"
+                    self.output['pdu_payload']['AdvA']=AdvA[:-1]
 
-            self.output['pdu_payload']['LLData_parse']['AA']=self.lsb2msb(LL_Data,0,4)
-            self.output['pdu_payload']['LLData_parse']['CRCInit']=self.lsb2msb(LL_Data,4,3)
-            self.output['pdu_payload']['LLData_parse']['WinSize']=self.lsb2msb(LL_Data,7,1)
-            self.output['pdu_payload']['LLData_parse']['WinOffset']=self.lsb2msb(LL_Data,8,2)
-            self.output['pdu_payload']['LLData_parse']['Interval']=self.lsb2msb(LL_Data,10,2)
-            self.output['pdu_payload']['LLData_parse']['Latency']=self.lsb2msb(LL_Data,12,2)
-            self.output['pdu_payload']['LLData_parse']['Timeout']=self.lsb2msb(LL_Data,14,2)
-            self.output['pdu_payload']['LLData_parse']['ChM']=self.lsb2msb(LL_Data,16,5)
-            HopSCA=self.lsb2msb(LL_Data,21,1)
-            self.output['pdu_payload']['LLData_parse']['Hop']=str(int(bin(int(HopSCA,base=16))[2:][-5:],2))
-            self.output['pdu_payload']['LLData_parse']['SCA']=str(int(bin(int(HopSCA,base=16))[2:][:3],2))
+            # Most Important Part
+            if self.PDU_Type[type] in ['CONNECT_IND']:
+                InitA = AdvA = ""
+                for i in range(6):
+                    InitA += payload[10-i*2]+payload[11-i*2]+":"
+                self.output['pdu_payload']['InitA']=InitA[:-1]
+                for i in range(6):
+                    AdvA += payload[22-i*2]+payload[23-i*2]+":"
+                    self.output['pdu_payload']['AdvA'] = AdvA[:-1]
+                # LL_Data Parse    
+                AA = CRCinit = WinSize = Interval = Latency = Timeout = ChM = Hop = SCA = ""
+                LL_Data=payload[24:]
+                self.output['pdu_payload']['LLData'] = LL_Data
+                self.output['pdu_payload']['LLData_parse'] = {}
 
+                self.output['pdu_payload']['LLData_parse']['AA']=self.lsb2msb(LL_Data,0,4)
+                self.output['pdu_payload']['LLData_parse']['CRCInit']=self.lsb2msb(LL_Data,4,3)
+                self.output['pdu_payload']['LLData_parse']['WinSize']=self.lsb2msb(LL_Data,7,1)
+                self.output['pdu_payload']['LLData_parse']['WinOffset']=self.lsb2msb(LL_Data,8,2)
+                self.output['pdu_payload']['LLData_parse']['Interval']=self.lsb2msb(LL_Data,10,2)
+                self.output['pdu_payload']['LLData_parse']['Latency']=self.lsb2msb(LL_Data,12,2)
+                self.output['pdu_payload']['LLData_parse']['Timeout']=self.lsb2msb(LL_Data,14,2)
+                self.output['pdu_payload']['LLData_parse']['ChM']=self.lsb2msb(LL_Data,16,5)
+                HopSCA=self.lsb2msb(LL_Data,21,1)
+                self.output['pdu_payload']['LLData_parse']['Hop']=str(int(bin(int(HopSCA,base=16))[2:][-5:],2))
+                self.output['pdu_payload']['LLData_parse']['SCA']=str(int(bin(int(HopSCA,base=16))[2:][:3],2))
+        except:
+            print("[Error] Invaild PDU Type")
 
     def lsb2msb(self,payload,start,length):
         msb=""

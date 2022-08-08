@@ -33,7 +33,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     def handle_msg(self,msg):
         packets=pmt.symbol_to_string(msg)
         if packets in self.packets_pool:
-            if len(self.packets_pool) >100:
+            if len(self.packets_pool) > 5:
                 self.packets_pool=[]
                 #print("clear")
             #print("pass")

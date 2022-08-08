@@ -59,7 +59,7 @@ class RADIO:
             while self.sniff_adv_on:
                 for c in [37,38,39]:
                     self.HopChannel(c)
-                    time.sleep(0.55) 
+                    time.sleep(1.05) 
 
     # The channel number corresponds to the actual frequency
     def HopChannel(self,channel,crcint='0x555555'):

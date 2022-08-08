@@ -36,12 +36,23 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         # a callback is registered (properties work, too).
         self.AccessAddress = AA
         self.last_packets=""
+        self.packets_buf = ""
 
     def work(self, input_items, output_items):
         bits_stream=input_items[0]
         bits_decode=""
+        Octets = 257 #47
+
         for x in bits_stream:  
             bits_decode+=str(x)
+
+        # Fix packets cut
+        if len(self.packets_buf)!=0:
+            #print("fix packets")
+            self.packets_buf += bits_decode[:Octets-len(self.packets_buf)]
+            self.message_port_pub(pmt.intern("msg_out"),pmt.intern(self.packets_buf))
+            self.packets_buf = ""
+            return len(input_items[0])
 
         if self.AccessAddress!='':
             AA =bin(int(self.AccessAddress,base=16))[2:].zfill(8*4)[::-1]
@@ -60,20 +71,19 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             else:
                 index = bits_decode.find(packet2)
             
-            Octets = 257
-            #if len(bits_decode) - index >= 47*8:    # Drop packets
-            #    packets = bits_decode[index:index+47*8]
-            if len(bits_decode) - index >= Octets*8:    # Drop packets
+            if len(bits_decode) - index >= Octets*8:    # Cut pakcets
                 packets = bits_decode[index:index+Octets*8]
             else:
-                #print("copy failed")
+                self.packets_buf = bits_decode[index:] # Fix packets
                 return len(input_items[0])   
-                         
-            if packets[44*8:] == self.last_packets:  # Deduplication according to CRCs
+            
+            '''
+            if packets[(Octets-3)*8:] == self.last_packets:  # Deduplication according to CRCs
                 return len(input_items[0]) 
             else:
-                self.last_packets=packets[44*8:]
-                
+                self.last_packets=packets[(Octets-3)*8:]
+            '''
+            if True:
                 # Debug Log
                 '''
                 print("\n[",end='')
