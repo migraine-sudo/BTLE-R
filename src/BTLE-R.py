@@ -21,9 +21,10 @@ usage: BTLE-R.py [-h] [-v] [-m MAC]
 Command Line Interface for BTLE-Radio Bluetooth Baseband Experiment Kit
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -v, --version         show version and exit
+  -h, --help            Show this help message and exit
+  -v, --version         Show version and exit
   -m MAC, --mac MAC     Filter packets by advertiser MAC
+  -c CH, --channel CH   Monitor the broadcast channel CHA, the range is 0-39, the default is 37-39
 """
 
 
@@ -35,15 +36,19 @@ class RADIO:
     def __init__(self,tb) -> None:
         self.tb = tb    #GNURadio top_block_cls
         self.sniff_adv_on = False
-
+        self.channel_list = [37,38,39]
         # Start Threads
         self.thread_sniff = threading.Thread(target=self.hop_on_adv_cha)
         self.thread_sniff.setDaemon(True)
         self.thread_sniff.start()
         
-    def filter(self,addr=''):
+    def filter(self,addr='',channel = -1):
         if addr!='':
             self.tb.epy_block_2.reset_addr(addr)
+        if channel != -1:
+            print("channel")
+            self.channel_list = []
+            self.channel_list.append(channel)
 
     def start_sniff(self):
         self.sniff_adv_on = True  
@@ -57,7 +62,7 @@ class RADIO:
     def hop_on_adv_cha(self):
         while True:
             while self.sniff_adv_on:
-                for c in [37,38,39]:
+                for c in self.channel_list:
                     self.HopChannel(c)
                     time.sleep(1.05) 
 
@@ -127,11 +132,12 @@ class BLE_Decode:
 def main(top_block_cls=ble_decode.ble_decode, options=None):
 
     try:
-        opts,args = getopt.getopt(sys.argv[1:],'-h-m:-v',['help','mac=','version'])
+        opts,args = getopt.getopt(sys.argv[1:],'-h-m:-v-c:',['help','mac=','version','channel='])
     except:
         print(usage)
         exit()
     macaddr=''
+    channel=-1
     for opt_name,opt_value in opts:
 
             if opt_name in ('-h','--help'):
@@ -143,6 +149,8 @@ def main(top_block_cls=ble_decode.ble_decode, options=None):
             if opt_name in ('-m','--mac'):
                 macaddr = opt_value
                 #exit()
+            if opt_name in ('-c','--channel'):
+                channel = opt_value
 
     
     tb = top_block_cls()
@@ -167,7 +175,7 @@ def main(top_block_cls=ble_decode.ble_decode, options=None):
 
     # Radio Control
     radio = RADIO(tb)
-    radio.filter(addr=macaddr)
+    radio.filter(addr=macaddr,channel=channel)
     radio.start_sniff()
 
     ble = BLE_Decode()
