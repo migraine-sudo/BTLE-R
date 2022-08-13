@@ -35,9 +35,9 @@ class ble_decode(gr.top_block):
         # Variables
         ##################################################
         self.samp_rate = samp_rate = 4e6
-        self.freq_channel = freq_channel = 2.480e9
+        self.freq_channel = freq_channel = 2.402e9
         self.crc_init = crc_init = '0x555555'
-        self.channel_id = channel_id = 39
+        self.channel_id = channel_id = 37
         self.access_address = access_address = '0x8E89BED6'
 
         ##################################################

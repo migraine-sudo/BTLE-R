@@ -70,14 +70,15 @@ Run BTLE-R (in development). Use python to customize the baseband logic, and cur
 **USAGE**
 
 ```
-usage: BTLE-R.py [-h] [-v] [-m MAC] 
+usage: BTLE-R.py [-h] [-v] [-m MAC] [-c CH]
 
 Command Line Interface for BTLE-Radio Bluetooth Baseband Experiment Kit
 
 optional arguments:
-  -h, --help            show this help message and exit
-  -v, --version         show version and exit
+  -h, --help            Show this help message and exit
+  -v, --version         Show version and exit
   -m MAC, --mac MAC     Filter packets by advertiser MAC
+  -c CH, --channel CH   Monitor the broadcast channel CHA, the range is 0-39, the default is 37-39
 ```
 
 Example

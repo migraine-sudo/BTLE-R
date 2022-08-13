@@ -46,7 +46,6 @@ class RADIO:
         if addr!='':
             self.tb.epy_block_2.reset_addr(addr)
         if channel != -1:
-            print("channel")
             self.channel_list = []
             self.channel_list.append(int(channel))
 
@@ -97,7 +96,8 @@ class BLE_Decode:
                     print ("    [RxAdd] : "+self.PDU_Add[self.output['RxAdd']])
                     print ("     |----- [PDU] : " + str(self.output['pdu_payload']))
                 except:
-                    print("Invaild PDU Header")
+                    #print("Invaild PDU Header")
+                    pass
             else:
                 """Data Physical Channel PDU"""
                 print("Data Physical Channel PDU")

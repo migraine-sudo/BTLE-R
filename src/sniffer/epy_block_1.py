@@ -32,14 +32,17 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
 
     def handle_msg(self,msg):
         packets=pmt.symbol_to_string(msg)
-        if packets in self.packets_pool:
-            if len(self.packets_pool) > 5:
+        #'''
+        if packets[:200] in self.packets_pool:
+            #print(packets[:200])
+            self.packets_pool.append('Empty PDU')
+            if len(self.packets_pool) > 3: #5
                 self.packets_pool=[]
                 #print("clear")
             #print("pass")
             return 0
-        
-        self.packets_pool.append(packets)
+        #'''     
+        self.packets_pool.append(packets[:200])
         index=0
         packets_after = self.whitening(self.channel,packets)
         self.message_port_pub(pmt.intern("msg_out"),pmt.intern(packets_after))

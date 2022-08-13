@@ -48,7 +48,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '39'
+    value: '37'
   states:
     bus_sink: false
     bus_source: false
@@ -72,7 +72,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: 2.480e9
+    value: 2.402e9
   states:
     bus_sink: false
     bus_source: false
@@ -230,14 +230,16 @@ blocks:
       \ with the same name as a parameter is found,\n        # a callback is registered\
       \ (properties work, too).\n        self.channel = CHANNEL\n        self.packets_pool=[]\n\
       \n    def handle_msg(self,msg):\n        packets=pmt.symbol_to_string(msg)\n\
-      \        if packets in self.packets_pool:\n            if len(self.packets_pool)\
-      \ > 5:\n                self.packets_pool=[]\n                #print(\"clear\"\
-      )\n            #print(\"pass\")\n            return 0\n        \n        self.packets_pool.append(packets)\n\
-      \        index=0\n        packets_after = self.whitening(self.channel,packets)\n\
-      \        self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(packets_after))\n\
-      \        \"\"\"\n        print(\"[Before Whitening]:\",end='')\n        self.logger(packets)\n\
-      \        print(\"[After   Whitening]:\",end='')\n        self.logger(packets_after)\n\
-      \        \"\"\"\n        time.sleep(0.01)\n        \n\n    def whitening(self,channel,data):\n\
+      \        #'''\n        if packets[:200] in self.packets_pool:\n            #print(packets[:200])\n\
+      \            self.packets_pool.append('Empty PDU')\n            if len(self.packets_pool)\
+      \ > 3: #5\n                self.packets_pool=[]\n                #print(\"clear\"\
+      )\n            #print(\"pass\")\n            return 0\n        #'''     \n \
+      \       self.packets_pool.append(packets[:200])\n        index=0\n        packets_after\
+      \ = self.whitening(self.channel,packets)\n        self.message_port_pub(pmt.intern(\"\
+      msg_out\"),pmt.intern(packets_after))\n        \"\"\"\n        print(\"[Before\
+      \ Whitening]:\",end='')\n        self.logger(packets)\n        print(\"[After\
+      \   Whitening]:\",end='')\n        self.logger(packets_after)\n        \"\"\"\
+      \n        time.sleep(0.01)\n        \n\n    def whitening(self,channel,data):\n\
       \        pre = data[:40]\n        data= data[40:]\n        position=[]\n   \
       \     register=bin(channel)[2:].zfill(6)\n        #print(register)\n       \
       \ position.append(1)\n        for i in register:\n            position.append(int(i))\n\
@@ -297,13 +299,28 @@ blocks:
       \        # Start Parse PDU\n        self.AA_Gain(packet_str)\n        self.PDU_Payload(packet_str)\n\
       \        self.PDU_CRC(packet_str)\n\n        try:\n            CRCInit=int(self.crcinit,base=16)\n\
       \        except:\n            print(\"[Warning] the type of CRCInit should be\
-      \ string,using 0x555555 Default\")\n            CRCInit=0x555555\n        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit)\
+      \ string,using 0x555555 Default\")\n            CRCInit=0x555555\n        '''\n\
+      \        crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit)\
       \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n        if crc_ca !=int(self.output['crc'],base=16):\
       \ # CRC Check\n            if DEBUG:\n                print(\"[LOG] Drop packets\
-      \ [CRC wrong]\\n\")\n            return 0\n\n        '''\n        Parse\n  \
-      \      '''\n\n        if self.channel in [37,38,39]:\n            \"\"\"Advertising\
-      \ Physical Channel PDU\"\"\"\n            self.ADV_HEAD_Parse(packet_str) ##\
-      \ Parse Header\n            self.ADV_Payload_Parse(self.output['type'],self.output['payload'])\
+      \ [CRC wrong]\\n\")\n            return 0\n        '''\n\n        '''\n    \
+      \    Parse\n        '''\n\n        if self.channel in [37,38,39]:\n        \
+      \    \"\"\"Advertising Physical Channel PDU\"\"\"\n            try:\n      \
+      \          self.ADV_HEAD_Parse(packet_str) ## Parse Header\n            except:\n\
+      \                print(\"PDU Header Parsing Error\")\n                return\
+      \ False\n            try:\n                if self.PDU_Type[self.output['type']]\
+      \ != 'CONNECT_IND':\n                    crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit)\
+      \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n                    if\
+      \ crc_ca !=int(self.output['crc'],base=16): # CRC Check\n                  \
+      \          if Debug:\n                                print(\"[LOG] Drop packets\
+      \ [CRC wrong]\\n\")\n                            return False\n\n          \
+      \      else:\n                    crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit)\
+      \ #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])\n                    if\
+      \ crc_ca !=int(self.output['crc'],base=16): # CRC Check\n                  \
+      \          if Debug:\n                                print(\"[LOG] CONNECT_IND\
+      \ packets [CRC wrong]\")\n                            self.output['crc'] +=\
+      \ '[Wrong]'\n                            #return 0\n            except:\n  \
+      \              return False\n            self.ADV_Payload_Parse(self.output['type'],self.output['payload'])\
       \ ## Parse Payload\n            try:\n                if self.output['pdu_payload']['AdvA']!=\"\
       \": \n                    if self.advA.upper() !='' and self.advA.upper() !=\
       \ self.output['pdu_payload']['AdvA'].upper():\n                        #print(\"\
@@ -321,17 +338,18 @@ blocks:
       \ ')\n                    print (\"    [TxAdd] : \"+self.PDU_Add[self.output['TxAdd']],end='\
       \ ')\n                    print (\"    [RxAdd] : \"+self.PDU_Add[self.output['RxAdd']])\n\
       \                    print (\"     |----- [PDU] : \" + str(self.output['pdu_payload']))\n\
-      \                except:\n                    print(\"Invaild PDU Header\")\n\
-      \            else:\n                \"\"\"Data Physical Channel PDU\"\"\"\n\
-      \                print(\"Data Physical Channel PDU\")\n            \n      \
-      \      print (\"    [PAYLOAD] : [\"+self.output['payload']+\"]\",end='')\n \
-      \           print (\"    [LEN : \"+str(len),end='')\n            print (\" \
-      \   , CRC : \"+self.output['crc']+\"]\\n\")\n        \n        self.message_port_pub(pmt.intern(\"\
-      msg_out\"),pmt.intern(str(self.output)))\n\n    '''\n    PDU Help Dict\n   \
-      \ '''\n    PDU_Type={\n            '0000':'ADV_IND',\n            '0001':'ADV_DIRECT_IND',\n\
-      \            '0010':'ADV_NONCONN_IND',\n            '0011':'SCAN_REQ',  #AUX_SCAN_REQ\n\
-      \            '0100':'SCAN_RES',\n            '0101':'CONNECT_IND',   #AUX_CONNECT_REQ\n\
-      \            '0110':'ADV_SCAN_IND',\n            '0111':'ADV_EXT_IND',   #AUX_ADV_IND/AUX_SCAN_RSP/AUX_SYNC_IND/AUX_CHAIN_IND\n\
+      \                except:\n                    if Debug:\n                  \
+      \      print(\"Invaild PDU Header\")\n                    return 0\n       \
+      \     else:\n                \"\"\"Data Physical Channel PDU\"\"\"\n       \
+      \         print(\"Data Physical Channel PDU\")\n            \n            print\
+      \ (\"    [PAYLOAD] : [\"+self.output['payload']+\"]\",end='')\n            print\
+      \ (\"    [LEN : \"+str(len),end='')\n            print (\"    , CRC : \"+self.output['crc']+\"\
+      ]\\n\")\n        \n        self.message_port_pub(pmt.intern(\"msg_out\"),pmt.intern(str(self.output)))\n\
+      \n    '''\n    PDU Help Dict\n    '''\n    PDU_Type={\n            '0000':'ADV_IND',\n\
+      \            '0001':'ADV_DIRECT_IND',\n            '0010':'ADV_NONCONN_IND',\n\
+      \            '0011':'SCAN_REQ',  #AUX_SCAN_REQ\n            '0100':'SCAN_RES',\n\
+      \            '0101':'CONNECT_IND',   #AUX_CONNECT_REQ\n            '0110':'ADV_SCAN_IND',\n\
+      \            '0111':'ADV_EXT_IND',   #AUX_ADV_IND/AUX_SCAN_RSP/AUX_SYNC_IND/AUX_CHAIN_IND\n\
       \            '1000':'AUX_CONNECT_RSP'\n        }\n    PDU_Add={\n          \
       \  '0':'Public',\n            '1':'Random'\n        }\n    PDU_CHSEL={\n   \
       \         '0':'#1',\n            '1':'#2'\n        }\n        \n    '''\n  \
@@ -423,9 +441,9 @@ blocks:
       \                self.output['pdu_payload']['LLData_parse']['ChM']=self.lsb2msb(LL_Data,16,5)\n\
       \                HopSCA=self.lsb2msb(LL_Data,21,1)\n                self.output['pdu_payload']['LLData_parse']['Hop']=str(int(bin(int(HopSCA,base=16))[2:][-5:],2))\n\
       \                self.output['pdu_payload']['LLData_parse']['SCA']=str(int(bin(int(HopSCA,base=16))[2:][:3],2))\n\
-      \        except:\n            print(\"[Error] Invaild PDU Type\")\n\n    def\
-      \ lsb2msb(self,payload,start,length):\n        msb=\"\"\n        for i in range(length):\n\
-      \            msb += payload[start*2+length*2-2-i*2]+payload[start*2+length*2-1-i*2]\n\
+      \        except:\n            pass\n            #print(\"[Error] Invaild PDU\
+      \ Type or PDU is Broken\")\n\n    def lsb2msb(self,payload,start,length):\n\
+      \        msb=\"\"\n        for i in range(length):\n            msb += payload[start*2+length*2-2-i*2]+payload[start*2+length*2-1-i*2]\n\
       \        return msb\n\n\n    def reset_channel(self,channel):\n        self.channel\
       \ = channel\n    \n    def reset_crcinit(self,crcinit):\n        self.crcinit\
       \ = crcinit\n    \n    def reset_addr(self,addr):\n        self.advA = addr"

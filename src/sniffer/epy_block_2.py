@@ -52,11 +52,13 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         except:
             print("[Warning] the type of CRCInit should be string,using 0x555555 Default")
             CRCInit=0x555555
+        '''
         crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit) #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])
         if crc_ca !=int(self.output['crc'],base=16): # CRC Check
             if DEBUG:
                 print("[LOG] Drop packets [CRC wrong]\n")
             return 0
+        '''
 
         '''
         Parse
@@ -64,7 +66,28 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
 
         if self.channel in [37,38,39]:
             """Advertising Physical Channel PDU"""
-            self.ADV_HEAD_Parse(packet_str) ## Parse Header
+            try:
+                self.ADV_HEAD_Parse(packet_str) ## Parse Header
+            except:
+                print("PDU Header Parsing Error")
+                return False
+            try:
+                if self.PDU_Type[self.output['type']] != 'CONNECT_IND':
+                    crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit) #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])
+                    if crc_ca !=int(self.output['crc'],base=16): # CRC Check
+                            if Debug:
+                                print("[LOG] Drop packets [CRC wrong]\n")
+                            return False
+
+                else:
+                    crc_ca=self.PDU_CRC_CAL(self.output['head']+self.output['payload'],crcinit=CRCInit) #crc_ca=self.PDU_CRC_CAL(packet_str[10:len*2+14])
+                    if crc_ca !=int(self.output['crc'],base=16): # CRC Check
+                            if Debug:
+                                print("[LOG] CONNECT_IND packets [CRC wrong]")
+                            self.output['crc'] += '[Wrong]'
+                            #return 0
+            except:
+                return False
             self.ADV_Payload_Parse(self.output['type'],self.output['payload']) ## Parse Payload
             try:
                 if self.output['pdu_payload']['AdvA']!="": 
@@ -93,7 +116,9 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
                     print ("    [RxAdd] : "+self.PDU_Add[self.output['RxAdd']])
                     print ("     |----- [PDU] : " + str(self.output['pdu_payload']))
                 except:
-                    print("Invaild PDU Header")
+                    if Debug:
+                        print("Invaild PDU Header")
+                    return 0
             else:
                 """Data Physical Channel PDU"""
                 print("Data Physical Channel PDU")
@@ -301,7 +326,8 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
                 self.output['pdu_payload']['LLData_parse']['Hop']=str(int(bin(int(HopSCA,base=16))[2:][-5:],2))
                 self.output['pdu_payload']['LLData_parse']['SCA']=str(int(bin(int(HopSCA,base=16))[2:][:3],2))
         except:
-            print("[Error] Invaild PDU Type")
+            pass
+            #print("[Error] Invaild PDU Type or PDU is Broken")
 
     def lsb2msb(self,payload,start,length):
         msb=""
