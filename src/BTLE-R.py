@@ -16,7 +16,7 @@ import threading
 import getopt
 
 usage = """
-usage: BTLE-R.py [-h] [-v] [-m MAC]
+usage: BTLE-R.py [-h] [-v] [-m MAC] [-c CH]
 
 Command Line Interface for BTLE-Radio Bluetooth Baseband Experiment Kit
 
@@ -48,7 +48,7 @@ class RADIO:
         if channel != -1:
             print("channel")
             self.channel_list = []
-            self.channel_list.append(channel)
+            self.channel_list.append(int(channel))
 
     def start_sniff(self):
         self.sniff_adv_on = True  
