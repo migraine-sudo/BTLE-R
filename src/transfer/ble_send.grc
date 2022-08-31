@@ -1,0 +1,738 @@
+options:
+  parameters:
+    author: migraine
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: no_gui
+    hier_block_src_path: '.:'
+    id: ble_send
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: BLE baseband transmitter module
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 8]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 4e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [184, 12]
+    rotation: 0
+    state: enabled
+- name: blocks_char_to_float_0_0_0
+  id: blocks_char_to_float
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale: '1'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [824, 508.0]
+    rotation: 0
+    state: disabled
+- name: blocks_pack_k_bits_bb_0
+  id: blocks_pack_k_bits_bb
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    k: '8'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [312, 356.0]
+    rotation: 0
+    state: true
+- name: blocks_throttle_0
+  id: blocks_throttle
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    ignoretag: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_second: samp_rate
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [648, 356.0]
+    rotation: 0
+    state: enabled
+- name: digital_gfsk_demod_0
+  id: digital_gfsk_demod
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    freq_error: '0.0'
+    gain_mu: '0.175'
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mu: '0.5'
+    omega_relative_limit: '0.005'
+    samples_per_symbol: '4'
+    sensitivity: '0.392699'
+    verbose: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [608, 472.0]
+    rotation: 0
+    state: disabled
+- name: digital_gfsk_mod_0
+  id: digital_gfsk_mod
+  parameters:
+    affinity: ''
+    alias: ''
+    bt: '0.500'
+    comment: ''
+    log: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samples_per_symbol: '4'
+    sensitivity: '0.392699'
+    verbose: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [448, 344.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_0
+  id: epy_block
+  parameters:
+    _source_code: "\"\"\"\nBLE Radio Module:\n\nThe BLE air interface is sent, the\
+      \ data is automatically packaged and the CRC is calculated,\nand the output\
+      \ can directly transmit the data stream from the physical layer.\n\"\"\"\n\n\
+      from email.charset import add_alias\nimport re\nfrom time import time\nimport\
+      \ time\nfrom zipapp import create_archive\nimport numpy as np\nfrom gnuradio\
+      \ import gr\nimport array\nimport binascii\n\nT_IFS = 150\nDEBUG = True\n\n\
+      class blk(gr.sync_block):  # other base classes are basic_block, decim_block,\
+      \ interp_block\n    \"\"\"BLE Radio Module - link layer to physical layer conversion\"\
+      \"\"\n\n    def __init__(self, channel=38 ,crcinit=\"0x555555\" ,accaddr=\"\
+      0x8E89BED6\" ,pdu_data =\"022006050403020119095344522f426c7565746f6f74682f4c6f772f456e65726779\"\
+      ):  # only default arguments here\n        gr.sync_block.__init__(\n       \
+      \     self,\n            name='BLE_Radio_Source',   # will show up in GRC\n\
+      \            in_sig=[],\n            out_sig=[np.int8]\n        )\n        #\
+      \ if an attribute with the same name as a parameter is found,\n        # a callback\
+      \ is registered (properties work, too).\n        self.channel = channel\n  \
+      \      self.pdu_data = pdu_data\n        self.crcinit = int(crcinit,16)\n  \
+      \      self.accaddr = int(accaddr,16)\n        self.rf_buffer = \"\"\n     \
+      \   self.num = 0\n\n    def work(self, input_items, output_items):\n\n     \
+      \   PDU_Data = self.pdu_data #\"022006050403020119095344522f426c7565746f6f74682f4c6f772f456e65726779\"\
+      \ #37-DISCOVERY-TxAdd-0-RxAdd-0-AdvA-010203040506-LOCAL_NAME09-SDR/Bluetooth/Low/Energy\n\
+      \        self.rf_buffer  = self.LL_Data_Pack(PDU_Data,accaddr=self.accaddr,crcinit\
+      \ = self.crcinit)\n\n        packets = self.RF_Trans()\n        try:\n     \
+      \       for j in range(len(packets)):\n                output_items[0][j] =\
+      \ packets[j]\n        except:\n            output_items[0]=np.array([0 for i\
+      \ in range(len(packets))]) \n            output_items[0][:len(packets)] = packets\n\
+      \        return len(output_items[0][:len(packets)])\n\n\n    '''\n    The data\
+      \ modulation is modulated and transmitted to the HackRF transmitter\n    '''\n\
+      \    def RF_Trans(self):\n        source_bits = self.str2bits(self.rf_buffer)\n\
+      \        packets = array.array('B',source_bits.encode())\n        self.num +=\
+      \ 1\n        self.rf_buffer = \"\"\n        if DEBUG:\n            print(f\"\
+      send {str(self.num)} packets\")\n        time.sleep(T_IFS*0.000001)\n      \
+      \  return packets\n\n    '''\n    Link layer data packets only need to provide\
+      \ PDU data, \n    but please ensure that the PDU Header and PDU Data are self-consistent,\
+      \ \n    and will not be checked here.\n    '''\n    def LL_Data_Pack(self,payload,accaddr\
+      \ = 0x8E89BED6,crcinit = 0x555555):\n        if len(payload) == 0 or len(payload)%2\
+      \ ==1:\n            if DEBUG:\n                print(\"[Error] The hexadecimal\
+      \ parsing of the PDU failed, please ensure that the number of bytes is a multiple\
+      \ of 2\")\n            return \"\"\n        LL_Data = self.add_crc_sum(self.add_accadddr(payload,accaddr),crcinit)\n\
+      \        PHY_Data = self.data_whitening(self.channel,LL_Data)\n        if DEBUG:\n\
+      \            print (\"CH : \" + str(self.channel))\n            print (\"LL\
+      \ Data Before Whitening : \" + LL_Data)\n            print (\"PHY Data After\
+      \ Whitening : \" + PHY_Data)\n        return PHY_Data\n\n\n    '''\n    Use\
+      \ 0xaa or 0x55 as Preamble according to the lowest bit of AccessAddress\n  \
+      \  '''\n    # Attention : Using After add_accadddr() !\n    def add_preamble(self,payload,low_bit\
+      \ = 0):\n        #PREAMBLE=\"01010101\" # 0xaa reverse\n        #PREAMBLE2=\"\
+      10101010\" # 0x55 reverse\n        if low_bit == 0 :\n            PREAMBLE_HEX\
+      \ = \"aa\"\n        elif low_bit == 1:\n            PREAMBLE_HEX = \"55\"\n\
+      \        else:\n            return False\n        return PREAMBLE_HEX + payload\
+      \ \n\n    '''\n    Add AccessAddress and Preamble to the header for the PDU\
+      \ packet\n    '''\n    def add_accadddr(self,payload,accaddr = 0x8E89BED6):\n\
+      \        #Broadcast = \"01101011011111011001000101110001\" # 0x8E89BED6\n  \
+      \      accaddr_list = list(hex(accaddr)[2:])\n        accaddr_hex = \"\"\n \
+      \       for i in range(0,int(len(accaddr_list)/2)):\n            accaddr_hex+=accaddr_list[int(len(accaddr_list))-i*2-2]+accaddr_list[int(len(accaddr_list))-i*2-1]\n\
+      \        payload = accaddr_hex+payload\n        if int(bin(int(hex(accaddr)[-2:],16))[-1:])\
+      \ == 0:\n            return self.add_preamble(payload,0)    \n        return\
+      \ self.add_preamble(payload,1)\n\n\n    '''\n    Calculate the CRC of the entire\
+      \ PDU and add it to the end of the PDU\n    '''\n    def add_crc_sum(self,payload,crcinit=0x555555):\n\
+      \        ''' Usage:\n            source  = \"aad6be898e0011727919bebae70201050702031802180418\"\
+      \ #d1a136\n            source = self.add_crc_sum(source)\n            print(source)\n\
+      \        '''\n        crc24 = self.PDU_CRC_CAL(payload[10:],crcinit=crcinit,reverse=False)\
+      \ # Cut Preamble && AccAddr\n        payload += self.bit2str(bin(crc24)[2:])\n\
+      \        return payload\n\n    '''\n    For whitening the entire PDU, Channle\
+      \ is required as ca. \n    Note that Preamble and AccessAddress are added before\
+      \ whitening.\n    '''\n    def data_whitening(self,channel,payload):\n     \
+      \   source_bits = self.str2bits2(payload)\n        ret = self.bit2str(self.whitening(channel,source_bits))\n\
+      \        return ret\n\n\n\n    '''\n    BLE Tools Blow...\n    -----------------\n\
+      \    '''\n    def PDU_CRC_CAL(self,data,crcinit=0x555555,reverse =True):\n \
+      \       data_re=\"\"\n        #Restoring the byte order to the original order\
+      \ during Bluetooth transmission \n        #is actually a bit redundant and worth\
+      \ optimizing.\n        for i in range(int(len(data)/2)):\n            data_re\
+      \ +=hex(int((bin(int(data[i*2],base=16))[2:].zfill(4) + bin(int(data[i*2+1],base=16))[2:].zfill(4))[::-1],base=2)\
+      \ )[2:].zfill(2)\n        payload = binascii.unhexlify(data_re)\n        crc24\
+      \ = self.crc24(payload,crcinit) \n        if reverse == True:\n            return\
+      \ int(bin(crc24)[2:].zfill(24)[::-1],2) # reverse bits\n        return crc24\n\
+      \n    def crc24(self,octets,crcint):\n        INIT = crcint\n        POLY =\
+      \ 0x100065B\n        crc = INIT\n        for octet in octets: # this is what\
+      \ the '*octets++' logic is effectively\n        # accomplishing in the C code.\n\
+      \            crc ^= (octet << 16)\n            # Throw that ROL function away,\
+      \ because the C code **doesn't** actually\n            # rotate left; it shifts\
+      \ left. It happens to throw away any bits that are\n            # shifted past\
+      \ the 32nd position, but that doesn't actulaly matter for\n            # the\
+      \ correctness of the algorithm, because those bits can never \"come back\"\n\
+      \            # and we will mask off everything but the bottom 24 at the end\
+      \ anyway.\n            for i in range(8):\n                crc <<= 1\n     \
+      \           if crc & 0x1000000: crc ^= POLY\n        return crc & 0xFFFFFF\n\
+      \n    def whitening(self,channel,data):\n        pre = data[:40]\n        data=\
+      \ data[40:]\n        position=[]\n        register=bin(channel)[2:].zfill(6)\n\
+      \        #print(register)\n        position.append(1)\n        for i in register:\n\
+      \            position.append(int(i))\n        #print(\"init position:\"+\"\"\
+      .join([str(x) for x in position]))\n\n        sink=[]\n        for x in data:\n\
+      \            extra = position[6]\n            sink.append(extra^int(x))\n  \
+      \          position[6]=position[5]\n            position[5]=position[4]\n  \
+      \          position[4]=position[3]^extra\n            position[3]=position[2]\n\
+      \            position[2]=position[1]\n            position[1]=position[0]\n\
+      \            position[0]=extra\n        return pre+\"\".join([str(x) for x in\
+      \ sink])\n\n\n    '''\n    str2bits\n    '''\n    def str2bits(self,source):\n\
+      \        bit_stream=\"\"\n        for index in range(int(len(source)/2)):\n\
+      \            #print(i)\n            bits1=(bin(int(source[index*2],base=16)))[2:].zfill(4)\n\
+      \            bits2=(bin(int(source[index*2+1],base=16)))[2:].zfill(4)\n    \
+      \        bits_list = list(bits1+bits2)\n            for i in range(len(bits_list)):\n\
+      \                bits_list[i] = chr(int(bits_list[i]))\n                #bits_list[i]\
+      \ = (bits_list[i])\n            #print((bits1+bits2)[::-1])\n            bit_stream+=(\"\
+      \".join(bits_list))[::-1]\n            #bit_stream+=(bits2+bits1)\n        return\
+      \ bit_stream\n\n    '''\n    str2bits2,little different from str2bits\n    '''\n\
+      \    def str2bits2(self,source):\n        bit_stream=\"\"\n        for index\
+      \ in range(int(len(source)/2)):\n            #print(i)\n            bits1=(bin(int(source[index*2],base=16)))[2:].zfill(4)\n\
+      \            bits2=(bin(int(source[index*2+1],base=16)))[2:].zfill(4)\n    \
+      \        bits_list = list(bits1+bits2)\n            for i in range(len(bits_list)):\n\
+      \                #bits_list[i] = chr(int(bits_list[i]))\n                bits_list[i]\
+      \ = (bits_list[i])\n            #print((bits1+bits2)[::-1])\n            bit_stream+=(\"\
+      \".join(bits_list))[::-1]\n            #bit_stream+=(bits2+bits1)\n        return\
+      \ bit_stream\n\n    '''\n    Bits to String\n    Reverse the byte order of the\
+      \ bit stream and convert it to string format\n    The endianness is the same\
+      \ as wireshark shows.\n    '''\n    def bit2str(self,data):\n        str=\"\"\
+      \n        index=0\n        for i in range(int(len(data)/8)):\n            Bytes=[data[x]\
+      \ for x in range(index,index+4)]\n            Bytes2=[data[x] for x in range(index+4,index+8)]\n\
+      \            str+=format(int(\"\".join(Bytes2[::-1]),2),'x')+format(int(\"\"\
+      .join(Bytes[::-1]),2),'x') # Bits need reverse\n            index+=8\n     \
+      \   return str\n\n\n    '''\n    Interface to reset\n    '''\n\n    def reset_pdu_data(self,payload):\n\
+      \        self.pdu_data = payload\n    \n    def reset_crcinit(self,crcinit):\n\
+      \        self.crcinit = crcinit\n\n    def reset_accaddr(self,accaddr):\n  \
+      \      self.accaddr = accaddr\n\n    def reset_channel(self,channel):\n    \
+      \    self.channel = channel"
+    accaddr: '''0x8E89BED6'''
+    affinity: ''
+    alias: ''
+    channel: '37'
+    comment: ''
+    crcinit: '''0x555555'''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    pdu_data: '''022006050403020119095344522f426c7565746f6f74682f4c6f772f456e65726779'''
+  states:
+    _io_cache: ('BLE_Radio_Source', 'blk', [('channel', '38'), ('crcinit', "'0x555555'"),
+      ('accaddr', "'0x8E89BED6'"), ('pdu_data', "'022006050403020119095344522f426c7565746f6f74682f4c6f772f456e65726779'")],
+      [], [('0', 'byte', 1)], 'BLE Radio Module - link layer to physical layer conversion',
+      ['accaddr', 'channel', 'crcinit', 'pdu_data'])
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [88, 336.0]
+    rotation: 0
+    state: true
+- name: osmosdr_sink_0
+  id: osmosdr_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    ant0: ''
+    ant1: ''
+    ant10: ''
+    ant11: ''
+    ant12: ''
+    ant13: ''
+    ant14: ''
+    ant15: ''
+    ant16: ''
+    ant17: ''
+    ant18: ''
+    ant19: ''
+    ant2: ''
+    ant20: ''
+    ant21: ''
+    ant22: ''
+    ant23: ''
+    ant24: ''
+    ant25: ''
+    ant26: ''
+    ant27: ''
+    ant28: ''
+    ant29: ''
+    ant3: ''
+    ant30: ''
+    ant31: ''
+    ant4: ''
+    ant5: ''
+    ant6: ''
+    ant7: ''
+    ant8: ''
+    ant9: ''
+    args: '""'
+    bb_gain0: '20'
+    bb_gain1: '20'
+    bb_gain10: '20'
+    bb_gain11: '20'
+    bb_gain12: '20'
+    bb_gain13: '20'
+    bb_gain14: '20'
+    bb_gain15: '20'
+    bb_gain16: '20'
+    bb_gain17: '20'
+    bb_gain18: '20'
+    bb_gain19: '20'
+    bb_gain2: '20'
+    bb_gain20: '20'
+    bb_gain21: '20'
+    bb_gain22: '20'
+    bb_gain23: '20'
+    bb_gain24: '20'
+    bb_gain25: '20'
+    bb_gain26: '20'
+    bb_gain27: '20'
+    bb_gain28: '20'
+    bb_gain29: '20'
+    bb_gain3: '20'
+    bb_gain30: '20'
+    bb_gain31: '20'
+    bb_gain4: '20'
+    bb_gain5: '20'
+    bb_gain6: '20'
+    bb_gain7: '20'
+    bb_gain8: '20'
+    bb_gain9: '20'
+    bw0: '0'
+    bw1: '0'
+    bw10: '0'
+    bw11: '0'
+    bw12: '0'
+    bw13: '0'
+    bw14: '0'
+    bw15: '0'
+    bw16: '0'
+    bw17: '0'
+    bw18: '0'
+    bw19: '0'
+    bw2: '0'
+    bw20: '0'
+    bw21: '0'
+    bw22: '0'
+    bw23: '0'
+    bw24: '0'
+    bw25: '0'
+    bw26: '0'
+    bw27: '0'
+    bw28: '0'
+    bw29: '0'
+    bw3: '0'
+    bw30: '0'
+    bw31: '0'
+    bw4: '0'
+    bw5: '0'
+    bw6: '0'
+    bw7: '0'
+    bw8: '0'
+    bw9: '0'
+    clock_source0: ''
+    clock_source1: ''
+    clock_source2: ''
+    clock_source3: ''
+    clock_source4: ''
+    clock_source5: ''
+    clock_source6: ''
+    clock_source7: ''
+    comment: ''
+    corr0: '0'
+    corr1: '0'
+    corr10: '0'
+    corr11: '0'
+    corr12: '0'
+    corr13: '0'
+    corr14: '0'
+    corr15: '0'
+    corr16: '0'
+    corr17: '0'
+    corr18: '0'
+    corr19: '0'
+    corr2: '0'
+    corr20: '0'
+    corr21: '0'
+    corr22: '0'
+    corr23: '0'
+    corr24: '0'
+    corr25: '0'
+    corr26: '0'
+    corr27: '0'
+    corr28: '0'
+    corr29: '0'
+    corr3: '0'
+    corr30: '0'
+    corr31: '0'
+    corr4: '0'
+    corr5: '0'
+    corr6: '0'
+    corr7: '0'
+    corr8: '0'
+    corr9: '0'
+    freq0: 2.402e9
+    freq1: 100e6
+    freq10: 100e6
+    freq11: 100e6
+    freq12: 100e6
+    freq13: 100e6
+    freq14: 100e6
+    freq15: 100e6
+    freq16: 100e6
+    freq17: 100e6
+    freq18: 100e6
+    freq19: 100e6
+    freq2: 100e6
+    freq20: 100e6
+    freq21: 100e6
+    freq22: 100e6
+    freq23: 100e6
+    freq24: 100e6
+    freq25: 100e6
+    freq26: 100e6
+    freq27: 100e6
+    freq28: 100e6
+    freq29: 100e6
+    freq3: 100e6
+    freq30: 100e6
+    freq31: 100e6
+    freq4: 100e6
+    freq5: 100e6
+    freq6: 100e6
+    freq7: 100e6
+    freq8: 100e6
+    freq9: 100e6
+    gain0: '10'
+    gain1: '10'
+    gain10: '10'
+    gain11: '10'
+    gain12: '10'
+    gain13: '10'
+    gain14: '10'
+    gain15: '10'
+    gain16: '10'
+    gain17: '10'
+    gain18: '10'
+    gain19: '10'
+    gain2: '10'
+    gain20: '10'
+    gain21: '10'
+    gain22: '10'
+    gain23: '10'
+    gain24: '10'
+    gain25: '10'
+    gain26: '10'
+    gain27: '10'
+    gain28: '10'
+    gain29: '10'
+    gain3: '10'
+    gain30: '10'
+    gain31: '10'
+    gain4: '10'
+    gain5: '10'
+    gain6: '10'
+    gain7: '10'
+    gain8: '10'
+    gain9: '10'
+    if_gain0: '20'
+    if_gain1: '20'
+    if_gain10: '20'
+    if_gain11: '20'
+    if_gain12: '20'
+    if_gain13: '20'
+    if_gain14: '20'
+    if_gain15: '20'
+    if_gain16: '20'
+    if_gain17: '20'
+    if_gain18: '20'
+    if_gain19: '20'
+    if_gain2: '20'
+    if_gain20: '20'
+    if_gain21: '20'
+    if_gain22: '20'
+    if_gain23: '20'
+    if_gain24: '20'
+    if_gain25: '20'
+    if_gain26: '20'
+    if_gain27: '20'
+    if_gain28: '20'
+    if_gain29: '20'
+    if_gain3: '20'
+    if_gain30: '20'
+    if_gain31: '20'
+    if_gain4: '20'
+    if_gain5: '20'
+    if_gain6: '20'
+    if_gain7: '20'
+    if_gain8: '20'
+    if_gain9: '20'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nchan: '1'
+    num_mboards: '1'
+    sample_rate: samp_rate
+    sync: sync
+    time_source0: ''
+    time_source1: ''
+    time_source2: ''
+    time_source3: ''
+    time_source4: ''
+    time_source5: ''
+    time_source6: ''
+    time_source7: ''
+    type: fc32
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [856, 292.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_freq_sink_x_1
+  id: qtgui_freq_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    average: '1.0'
+    axislabels: 'True'
+    bw: samp_rate
+    color1: '"blue"'
+    color10: '"dark blue"'
+    color2: '"red"'
+    color3: '"green"'
+    color4: '"black"'
+    color5: '"cyan"'
+    color6: '"magenta"'
+    color7: '"yellow"'
+    color8: '"dark red"'
+    color9: '"dark green"'
+    comment: ''
+    ctrlpanel: 'False'
+    fc: '0'
+    fftsize: '1024'
+    freqhalf: 'True'
+    grid: 'False'
+    gui_hint: ''
+    label: Relative Gain
+    label1: ''
+    label10: ''''''
+    label2: ''''''
+    label3: ''''''
+    label4: ''''''
+    label5: ''''''
+    label6: ''''''
+    label7: ''''''
+    label8: ''''''
+    label9: ''''''
+    legend: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '""'
+    nconnections: '1'
+    showports: 'False'
+    tr_chan: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_tag: '""'
+    type: float
+    units: dB
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    wintype: firdes.WIN_BLACKMAN_hARRIS
+    ymax: '10'
+    ymin: '-140'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [952, 624.0]
+    rotation: 0
+    state: disabled
+- name: qtgui_time_sink_x_0
+  id: qtgui_time_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'True'
+    color1: blue
+    color10: dark blue
+    color2: red
+    color3: green
+    color4: black
+    color5: cyan
+    color6: magenta
+    color7: yellow
+    color8: dark red
+    color9: dark green
+    comment: ''
+    ctrlpanel: 'False'
+    entags: 'True'
+    grid: 'False'
+    gui_hint: ''
+    label1: Signal 1
+    label10: Signal 10
+    label2: Signal 2
+    label3: Signal 3
+    label4: Signal 4
+    label5: Signal 5
+    label6: Signal 6
+    label7: Signal 7
+    label8: Signal 8
+    label9: Signal 9
+    legend: 'True'
+    marker1: '-1'
+    marker10: '-1'
+    marker2: '-1'
+    marker3: '-1'
+    marker4: '-1'
+    marker5: '-1'
+    marker6: '-1'
+    marker7: '-1'
+    marker8: '-1'
+    marker9: '-1'
+    name: '""'
+    nconnections: '1'
+    size: '1024'
+    srate: samp_rate
+    stemplot: 'False'
+    style1: '1'
+    style10: '1'
+    style2: '1'
+    style3: '1'
+    style4: '1'
+    style5: '1'
+    style6: '1'
+    style7: '1'
+    style8: '1'
+    style9: '1'
+    tr_chan: '0'
+    tr_delay: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: float
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    ylabel: Amplitude
+    ymax: '1'
+    ymin: '-1'
+    yunit: '""'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [976, 496.0]
+    rotation: 0
+    state: disabled
+
+connections:
+- [blocks_char_to_float_0_0_0, '0', qtgui_freq_sink_x_1, '0']
+- [blocks_char_to_float_0_0_0, '0', qtgui_time_sink_x_0, '0']
+- [blocks_pack_k_bits_bb_0, '0', digital_gfsk_mod_0, '0']
+- [blocks_throttle_0, '0', osmosdr_sink_0, '0']
+- [digital_gfsk_demod_0, '0', blocks_char_to_float_0_0_0, '0']
+- [digital_gfsk_mod_0, '0', blocks_throttle_0, '0']
+- [digital_gfsk_mod_0, '0', digital_gfsk_demod_0, '0']
+- [epy_block_0, '0', blocks_pack_k_bits_bb_0, '0']
+
+metadata:
+  file_format: 1

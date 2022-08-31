@@ -1,7 +1,6 @@
 #!/opt/local/bin/python
 
 import sys
-from webbrowser import MacOSX
 sys.path.append('./sniffer/')
 
 from bisect import bisect_left
@@ -32,6 +31,8 @@ optional arguments:
 The RADIO module controller controls the BLE baseband written by GNURadio. 
 Support frequency hopping, BLE air interface unpacking, etc.
 """
+T_IFS = 150
+
 class RADIO:
     def __init__(self,tb) -> None:
         self.tb = tb    #GNURadio top_block_cls
@@ -64,6 +65,7 @@ class RADIO:
                 for c in self.channel_list:
                     self.HopChannel(c)
                     time.sleep(1.05) 
+                    #time.sleep(T_IFS*0.000001)
 
     # The channel number corresponds to the actual frequency
     def HopChannel(self,channel,crcint='0x555555'):

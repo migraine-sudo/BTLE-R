@@ -1,6 +1,6 @@
 options:
   parameters:
-    author: migriane
+    author: migraine
     category: '[GRC Hier Blocks]'
     cmake_opt: ''
     comment: ''

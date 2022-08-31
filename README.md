@@ -97,7 +97,9 @@ Example
 
 ![BTLE-demo2](./pic/BTLE-demo2.gif)
 
+**[Warning]**
 
+My test environment is MacOSX. If an error occurs when running (especially when switching to Ubuntu), please use GNURadio Companion to rebuild the code, and then use BTLE-R.py again.
 
 **[For Debug and Dev]**
 

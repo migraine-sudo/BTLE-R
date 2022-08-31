@@ -6,7 +6,7 @@
 #
 # GNU Radio Python Flow Graph
 # Title: Not titled yet
-# Author: migriane
+# Author: migraine
 # GNU Radio version: 3.8.5.0
 
 from gnuradio import blocks
