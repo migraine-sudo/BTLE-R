@@ -133,7 +133,7 @@ BTLE Air Interface Capture
 
 # Doc
 
-![GRC-Sniffer2](./pic/GRC-Sniffer2.png)Moudle Design
+![GRC-Sniffer2](./pic/GRC-Sniffer2.png)Sniffer Moudle Design
 
 - GFSKDemod (GNURadio Default)
 - BlE Packets Gain
@@ -142,9 +142,17 @@ BTLE Air Interface Capture
 - PDU Parse(Only Advertising Physical Channel，so far)
 - Hop channel
 
+![GRC-Rransfer](./pic/GRC-Rransfer.png)
+
+Transfer Moudle Design
+
+- BLE_Radio_Source（Requires PDU, transmit channel, Access Address, CRCinit and other information）
+  - LL_Data Package 
+  - CRC calculation
+  - Data Whitening
+  - Hop channel
+
 In the Plan
 
 - Data Physical Channel
-
 - Channel Selection
-- Transfer Mode(big project，maybe another)
