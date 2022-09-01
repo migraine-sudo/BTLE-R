@@ -70,18 +70,21 @@ Run BTLE-R (in development). Use python to customize the baseband logic, and cur
 **USAGE**
 
 ```
-usage: BTLE-R.py [-h] [-v] [-m MAC] [-c CH]
+usage: BTLE-R.py [-h] [-v] [-m MAC] [-c CH] [-t FILE]
 
 Command Line Interface for BTLE-Radio Bluetooth Baseband Experiment Kit
 
 optional arguments:
-  -h, --help            Show this help message and exit
-  -v, --version         Show version and exit
-  -m MAC, --mac MAC     Filter packets by advertiser MAC
-  -c CH, --channel CH   Monitor the broadcast channel CHA, the range is 0-39, the default is 37-39
+  -h, --help                Show this help message and exit
+  -v, --version             Show version and exit
+  -m MAC, --mac MAC         Filter packets by advertiser MAC
+  -c CH, --channel CH       Monitor the broadcast channel CHA, the range is 0-39, the default is 37-39
+  -t FILE, --transfer FILE  Send link layer data, data from JSON file [ Example in src/transfer/packets.txt ]
 ```
 
-Example
+**Example**
+
+Monitor the content of all broadcast channels
 
 ```
  $ ./BTLE-R.py
@@ -89,13 +92,21 @@ Example
 
 ![BTLE-demo](./pic/BTLE-demo.gif)
 
-
+Monitor the content of a broadcast channel of a mac address
 
 ```shell
  $ ./BTLE-R.py --mac e4:00:20:44:7c:d4
 ```
 
 ![BTLE-demo2](./pic/BTLE-demo2.gif)
+
+Send BLE link layer packets, on any channel，Content format see [packets.txt](src/transfer/packets.txt).
+
+```shell
+$ ./BTLE-R.py -t transfer/packets.txt
+```
+
+
 
 **[Warning]**
 
@@ -111,7 +122,11 @@ To run the flow graph in GNURadioCompanion or run the python script ble_decode.p
 $ python3 ble_decode.py
 ```
 
+A BLE sending interface is provided. Use the following commands to debug this interface for secondary development.
 
+```shell
+$ python3 trans_interface.py packets.txt
+```
 
 ## SNIFF
 
@@ -128,8 +143,6 @@ BTLE Air Interface Capture
      e.g. CONNECT_IND packet capture，parsing the packet can be used to obtain key information of the link connection, including frequency hopping algorithm (and ChannelMap), CRC initial data and Connect Interval, etc.
 
      ![BLE_CONNECT](./pic/BLE_CONNECT.png)
-
-
 
 # Doc
 

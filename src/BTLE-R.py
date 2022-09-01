@@ -13,17 +13,19 @@ import time
 import zmq
 import threading
 import getopt
+import subprocess
 
 usage = """
-usage: BTLE-R.py [-h] [-v] [-m MAC] [-c CH]
+usage: BTLE-R.py [-h] [-v] [-m MAC] [-c CH] [-t FILE]
 
 Command Line Interface for BTLE-Radio Bluetooth Baseband Experiment Kit
 
 optional arguments:
-  -h, --help            Show this help message and exit
-  -v, --version         Show version and exit
-  -m MAC, --mac MAC     Filter packets by advertiser MAC
-  -c CH, --channel CH   Monitor the broadcast channel CHA, the range is 0-39, the default is 37-39
+  -h, --help                Show this help message and exit
+  -v, --version             Show version and exit
+  -m MAC, --mac MAC         Filter packets by advertiser MAC
+  -c CH, --channel CH       Monitor the broadcast channel CHA, the range is 0-39, the default is 37-39
+  -t FILE, --transfer FILE  Send link layer data, data from JSON file [ Example in src/transfer/packets.txt ]
 """
 
 
@@ -140,7 +142,7 @@ class BLE_Decode:
 def main(top_block_cls=ble_decode.ble_decode, options=None):
 
     try:
-        opts,args = getopt.getopt(sys.argv[1:],'-h-m:-v-c:',['help','mac=','version','channel='])
+        opts,args = getopt.getopt(sys.argv[1:],'-h-m:-v-c:-t:',['help','mac=','version','channel=','transfer='])
     except:
         print(usage)
         exit()
@@ -159,7 +161,9 @@ def main(top_block_cls=ble_decode.ble_decode, options=None):
                 #exit()
             if opt_name in ('-c','--channel'):
                 channel = opt_value
-
+            if opt_name in ('-t','--transfer'):
+                subprocess.run(["transfer/trans_interface.py",opt_value])
+                exit()
     
     tb = top_block_cls()
     def sig_handler(sig=None, frame=None):
