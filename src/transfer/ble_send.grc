@@ -58,7 +58,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [824, 508.0]
+    coordinate: [808, 596.0]
     rotation: 0
     state: disabled
 - name: blocks_pack_k_bits_bb_0
@@ -74,7 +74,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [312, 356.0]
+    coordinate: [304, 244.0]
     rotation: 0
     state: true
 - name: blocks_throttle_0
@@ -93,7 +93,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [648, 356.0]
+    coordinate: [640, 244.0]
     rotation: 0
     state: enabled
 - name: digital_gfsk_demod_0
@@ -116,7 +116,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [608, 472.0]
+    coordinate: [592, 560.0]
     rotation: 0
     state: disabled
 - name: digital_gfsk_mod_0
@@ -136,7 +136,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [448, 344.0]
+    coordinate: [440, 232.0]
     rotation: 0
     state: enabled
 - name: epy_block_0
@@ -282,7 +282,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [88, 336.0]
+    coordinate: [80, 224.0]
     rotation: 0
     state: true
 - name: osmosdr_sink_0
@@ -543,7 +543,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [856, 292.0]
+    coordinate: [848, 180.0]
     rotation: 0
     state: enabled
 - name: qtgui_freq_sink_x_1
@@ -623,7 +623,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [952, 624.0]
+    coordinate: [936, 712.0]
     rotation: 0
     state: disabled
 - name: qtgui_time_sink_x_0
@@ -720,7 +720,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [976, 496.0]
+    coordinate: [960, 584.0]
     rotation: 0
     state: disabled
 
@@ -731,7 +731,6 @@ connections:
 - [blocks_throttle_0, '0', osmosdr_sink_0, '0']
 - [digital_gfsk_demod_0, '0', blocks_char_to_float_0_0_0, '0']
 - [digital_gfsk_mod_0, '0', blocks_throttle_0, '0']
-- [digital_gfsk_mod_0, '0', digital_gfsk_demod_0, '0']
 - [epy_block_0, '0', blocks_pack_k_bits_bb_0, '0']
 
 metadata:

@@ -74,7 +74,13 @@ class RADIO:
         self.tb.epy_block_1.reset_channel(channel)
         self.tb.epy_block_2.reset_channel(channel)
         self.tb.epy_block_2.reset_crcinit(crcint)
-    channel_map = {37:2.402e9,38:2.426e9,39:2.480e9}
+    
+    # CHANNLE MAP DICT
+    channel_map = {37:2.402e9,38:2.426e9,39:2.480e9,
+        0:2.404e9,1:2.406e9,2:2.408e9,3:2.410e9,4:2.412e9,5:2.414e9,6:2.416e9,7:2.418e9,8:2.420e9,9:2.422e9,10:2.424e9,
+        11:2.428e9,12:2.430e9,13:2.432e9,14:2.434e9,15:2.436e9,16:2.438e9,17:2.440e9,18:2.442e9,19:2.444e9,20:2.446e9,
+        21:2.448e9,22:2.450e9,23:2.452e9,24:2.454e9,25:2.456e9,26:2.458e9,27:2.460e9,28:2.462e9,29:2.464e9,30:2.466e9,
+        31:2.468e9,32:2.470e9,33:2.472e9,34:2.474e9,35:2.476e9,36:2.478e9}  # Using tools/chm_gen.py
 
 class BLE_Decode:
     def __init__(self) -> None:

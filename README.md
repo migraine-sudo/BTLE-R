@@ -1,6 +1,6 @@
 # BTLE-R
 
-![](https://img.shields.io/badge/Hardware-Hackrf%20One-brightgreen)![](https://img.shields.io/badge/Protocol-BLE-blue)
+[![OSCS Status](https://www.oscs1024.com/platform/badge/migraine-sudo/BTLE-R.svg?size=small)](https://www.oscs1024.com/project/migraine-sudo/BTLE-R?ref=badge_small)![](https://img.shields.io/badge/Hardware-Hackrf%20One-brightgreen)![](https://img.shields.io/badge/Protocol-BLE-blue)
 
 **BTLE-Radio** is an open source software-defined radio (HackRF One) Bluetooth low energy software experiment kit. Implement BLE baseband using software definition. In the BLE protocol stack, it corresponds to the physical layer and the link layer.
 
@@ -133,7 +133,9 @@ BTLE Air Interface Capture
 
 # Doc
 
-![GRC-Sniffer2](./pic/GRC-Sniffer2.png)Sniffer Moudle Design
+**Sniffer Moudle Design**
+
+![GRC-Sniffer2](./pic/GRC-Sniffer2.png)
 
 - GFSKDemod (GNURadio Default)
 - BlE Packets Gain
@@ -142,9 +144,9 @@ BTLE Air Interface Capture
 - PDU Parse(Only Advertising Physical Channel，so far)
 - Hop channel
 
-![GRC-Rransfer](./pic/GRC-Rransfer.png)
+**Transfer Moudle Design**
 
-Transfer Moudle Design
+![GRC-Rransfer](./pic/GRC-Rransfer.png)
 
 - BLE_Radio_Source（Requires PDU, transmit channel, Access Address, CRCinit and other information）
   - LL_Data Package 
