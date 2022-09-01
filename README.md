@@ -106,7 +106,7 @@ Send BLE link layer packets, on any channel，Content format see [packets.txt](s
 $ ./BTLE-R.py -t transfer/packets.txt
 ```
 
-
+<img src="./pic/transfer_mod_capture_test.gif" alt="transfer_mod_capture_test" style="zoom:50%;" />
 
 **[Warning]**
 
