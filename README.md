@@ -106,6 +106,8 @@ Send BLE link layer packets, on any channel，Content format see [packets.txt](s
 $ ./BTLE-R.py -t transfer/packets.txt
 ```
 
+After running the command, you can use LightBlue (or other BLE sniffer) to discover the broadcast with the name SDR/Bluetooth/Low/Energy. Sending other link layer signals is also supported.
+
 <img src="./pic/transfer_mod_capture_test.gif" alt="transfer_mod_capture_test" style="zoom:50%;" />
 
 **[Warning]**
@@ -122,7 +124,7 @@ To run the flow graph in GNURadioCompanion or run the python script ble_decode.p
 $ python3 ble_decode.py
 ```
 
-A BLE sending interface is provided. Use the following commands to debug this interface for secondary development.
+A BLE sending interface is provided. Use the following commands to use this interface for secondary development.
 
 ```shell
 $ python3 trans_interface.py packets.txt
@@ -143,6 +145,13 @@ BTLE Air Interface Capture
      e.g. CONNECT_IND packet capture，parsing the packet can be used to obtain key information of the link connection, including frequency hopping algorithm (and ChannelMap), CRC initial data and Connect Interval, etc.
 
      ![BLE_CONNECT](./pic/BLE_CONNECT.png)
+
+# Transfer
+
+Link Layer Data Transfer
+
+
+![BLE SEND ADV](./pic/BLE SEND ADV.png)
 
 # Doc
 
