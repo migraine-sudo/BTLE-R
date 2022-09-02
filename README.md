@@ -151,7 +151,7 @@ BTLE Air Interface Capture
 Link Layer Data Transfer
 
 
-![BLE SEND ADV](./pic/BLE SEND ADV.png)
+![BLE_SEND_ADV](./pic/BLE_SEND_ADV.png)
 
 # Doc
 
