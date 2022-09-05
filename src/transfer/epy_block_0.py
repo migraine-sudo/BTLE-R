@@ -35,6 +35,7 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
         self.crcinit = int(crcinit,16)
         self.accaddr = int(accaddr,16)
         self.rf_buffer = ""
+        self.empty_flag = False
         self.num = 0
 
     def work(self, input_items, output_items):
@@ -58,11 +59,13 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     def RF_Trans(self):
         source_bits = self.str2bits(self.rf_buffer)
         packets = array.array('B',source_bits.encode())
-        self.num += 1
         self.rf_buffer = ""
-        if DEBUG:
+        if self.empty_flag == False:
+            self.num += 1
+        if DEBUG and self.empty_flag == False:
             print(f"send {str(self.num)} packets")
         time.sleep(T_IFS*0.000001)
+        #time.sleep(T_IFS*0.001)
         return packets
 
     '''
@@ -73,11 +76,16 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
     def LL_Data_Pack(self,payload,accaddr = 0x8E89BED6,crcinit = 0x555555):
         if len(payload) == 0 or len(payload)%2 ==1:
             if DEBUG:
-                print("[Error] The hexadecimal parsing of the PDU failed, please ensure that the number of bytes is a multiple of 2")
+                if len(payload) == 0:
+                    print("Empty PDU")
+                else:
+                    print("[Error] The hexadecimal parsing of the PDU failed, please ensure that the number of bytes is a multiple of 2")
             return ""
+        if payload == "E7":
+            self.empty_flag = True
         LL_Data = self.add_crc_sum(self.add_accadddr(payload,accaddr),crcinit)
         PHY_Data = self.data_whitening(self.channel,LL_Data)
-        if DEBUG:
+        if DEBUG and payload != "E7": # "E7" -> EMPTY FLAG
             print ("CH : " + str(self.channel))
             print ("LL Data Before Whitening : " + LL_Data)
             print ("PHY Data After Whitening : " + PHY_Data)
@@ -124,7 +132,9 @@ class blk(gr.sync_block):  # other base classes are basic_block, decim_block, in
             print(source)
         '''
         crc24 = self.PDU_CRC_CAL(payload[10:],crcinit=crcinit,reverse=False) # Cut Preamble && AccAddr
-        payload += self.bit2str(bin(crc24)[2:])
+        if crc24 == 0: #The CRC check is 0, indicating that the PDU we obtained contains CRC at the end.
+            return payload
+        payload += self.bit2str(bin(crc24)[2:]).zfill(6) # crc bug fix
         return payload
 
     '''

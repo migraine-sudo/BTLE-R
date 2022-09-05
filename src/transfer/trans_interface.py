@@ -10,6 +10,8 @@ import os
 import signal
 import time
 import json
+import socket
+import threading
 
 T_IFS = 150
 MODEL = 1
@@ -43,7 +45,6 @@ def main(top_block_cls=ble_send, options=None):
     def sig_handler(sig=None, frame=None):
         tb.stop()
         tb.wait()
-
         sys.exit(0)
 
     signal.signal(signal.SIGINT, sig_handler)
@@ -79,17 +80,24 @@ def main(top_block_cls=ble_send, options=None):
     # ElSE Listen From Terminal Input / TCP input
     # Devloping...
     else:
-        print("PIPE Mode < ")
+        print("TCP Mode < ")
         MODEL = 1
         repeat_time = 0
+        '''
         line = sys.stdin.readline()
         data = parse(line)
         queue_pack.put(data)
+        '''
+        thread_tcp_daemon = threading.Thread(target=Tcp_Daemon,args=(queue_pack,))
+        thread_tcp_daemon.setDaemon(True)
+        thread_tcp_daemon.start()
+
 
     started = False
     #time.sleep(T_IFS*2*0.000001)
     while True:
         if queue_pack.empty()==True:
+            #lldata=LL_Data_Struct(37,"E7") #'E7' -> EMPTY FLAG
             lldata=LL_Data_Struct(37,"")
             if MODEL == 0: # Mode 0, the program will automatically exit after sending
                 tb.stop()
@@ -97,20 +105,23 @@ def main(top_block_cls=ble_send, options=None):
         else:
             #print (repeat_time)
             lldata = queue_pack.get()
-            if repeat_time < 0:
-                continue
-            queue_pack.put(lldata) #repeat
-            repeat_time -=1
+            if repeat_time >= 1:
+                queue_pack.put(lldata) #repeat
+                repeat_time -=1
         if started == False:
             tb.start()
             started = True
+        tb.osmosdr_sink_0.set_center_freq(channel_map[lldata.channel], 0)
         tb.epy_block_0.reset_channel(lldata.channel)
         tb.epy_block_0.reset_pdu_data(lldata.pdu_data)
         tb.epy_block_0.reset_crcinit(lldata.crcinit)
-        tb.epy_block_0.reset_accaddr(lldata.accaddr)
-        tb.osmosdr_sink_0.set_center_freq(channel_map[lldata.channel], 0)
+        tb.epy_block_0.reset_accaddr(lldata.accaddr) 
         ## Twice the T_IFS interval to ensure that the contents of the queue will not be lost
-        time.sleep(T_IFS*2*0.000001) # After testing, the actual accuracy of frequency hopping can only be around 0.01s.
+        if MODEL == 0:
+            time.sleep(T_IFS*2*0.000001) # After testing, the actual accuracy of frequency hopping can only be around 0.01s.
+        else :
+            #time.sleep(T_IFS*2*0.000001) 
+            time.sleep(T_IFS*2*0.001)
 
     try:
         input('Press Enter to quit: ')
@@ -125,7 +136,7 @@ Parse the JSON format and write the data into the LL_Data structure
 def parse(line):
     packet_data = json.loads(line[:-1])
     channel = packet_data['channel']
-    pdu_data = packet_data['pdu_data']
+    pdu_data = packet_data['pdu_data'].lower()
     try:
         accaddr = int(packet_data['accaddr'],16)
         crcinit = int(packet_data['crcinit'],16)
@@ -142,6 +153,36 @@ def parse(line):
     data = LL_Data_Struct(channel=channel,pdu_data=pdu_data,crcinit=crcinit,accaddr=accaddr)
     return data  
 
+def Tcp_Daemon(queue_pack):
+        server = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        server.settimeout(60)
+        #host = '127.0.0.1'
+        host = '0.0.0.0'
+        port = 52854
+        server.bind((host, port))
+        server.listen(1) 
+        MaxBytes = 2048
+        try:
+            client,addr = server.accept()          # 等待客户端连接
+            print(addr," Device Connected")
+            while True:
+                data = client.recv(MaxBytes)
+                if not data:
+                    print('Disconnected')
+                    break
+                localTime = time.asctime( time.localtime(time.time()))
+                print(localTime,' recv bytes num:',len(data))
+                print(data.decode())
+                try:
+                    lldata = parse(data.decode()+"\n")    
+                except:
+                    print("[Warning] JSON loads Error")
+                queue_pack.put(lldata)
+        except BaseException as e:
+            print("[Error] Socket Error")
+            print(repr(e))
+        finally:
+            server.close()                    # 关闭连接
 
 if __name__ == '__main__':
     main()

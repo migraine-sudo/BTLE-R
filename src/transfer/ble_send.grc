@@ -159,8 +159,8 @@ blocks:
       \ is registered (properties work, too).\n        self.channel = channel\n  \
       \      self.pdu_data = pdu_data\n        self.crcinit = int(crcinit,16)\n  \
       \      self.accaddr = int(accaddr,16)\n        self.rf_buffer = \"\"\n     \
-      \   self.num = 0\n\n    def work(self, input_items, output_items):\n\n     \
-      \   PDU_Data = self.pdu_data #\"022006050403020119095344522f426c7565746f6f74682f4c6f772f456e65726779\"\
+      \   self.empty_flag = False\n        self.num = 0\n\n    def work(self, input_items,\
+      \ output_items):\n\n        PDU_Data = self.pdu_data #\"022006050403020119095344522f426c7565746f6f74682f4c6f772f456e65726779\"\
       \ #37-DISCOVERY-TxAdd-0-RxAdd-0-AdvA-010203040506-LOCAL_NAME09-SDR/Bluetooth/Low/Energy\n\
       \        self.rf_buffer  = self.LL_Data_Pack(PDU_Data,accaddr=self.accaddr,crcinit\
       \ = self.crcinit)\n\n        packets = self.RF_Trans()\n        try:\n     \
@@ -170,31 +170,36 @@ blocks:
       \        return len(output_items[0][:len(packets)])\n\n\n    '''\n    The data\
       \ modulation is modulated and transmitted to the HackRF transmitter\n    '''\n\
       \    def RF_Trans(self):\n        source_bits = self.str2bits(self.rf_buffer)\n\
-      \        packets = array.array('B',source_bits.encode())\n        self.num +=\
-      \ 1\n        self.rf_buffer = \"\"\n        if DEBUG:\n            print(f\"\
-      send {str(self.num)} packets\")\n        time.sleep(T_IFS*0.000001)\n      \
-      \  return packets\n\n    '''\n    Link layer data packets only need to provide\
-      \ PDU data, \n    but please ensure that the PDU Header and PDU Data are self-consistent,\
-      \ \n    and will not be checked here.\n    '''\n    def LL_Data_Pack(self,payload,accaddr\
-      \ = 0x8E89BED6,crcinit = 0x555555):\n        if len(payload) == 0 or len(payload)%2\
-      \ ==1:\n            if DEBUG:\n                print(\"[Error] The hexadecimal\
+      \        packets = array.array('B',source_bits.encode())\n        self.rf_buffer\
+      \ = \"\"\n        if self.empty_flag == False:\n            self.num += 1\n\
+      \        if DEBUG and self.empty_flag == False:\n            print(f\"send {str(self.num)}\
+      \ packets\")\n        time.sleep(T_IFS*0.000001)\n        #time.sleep(T_IFS*0.001)\n\
+      \        return packets\n\n    '''\n    Link layer data packets only need to\
+      \ provide PDU data, \n    but please ensure that the PDU Header and PDU Data\
+      \ are self-consistent, \n    and will not be checked here.\n    '''\n    def\
+      \ LL_Data_Pack(self,payload,accaddr = 0x8E89BED6,crcinit = 0x555555):\n    \
+      \    if len(payload) == 0 or len(payload)%2 ==1:\n            if DEBUG:\n  \
+      \              if len(payload) == 0:\n                    print(\"Empty PDU\"\
+      )\n                else:\n                    print(\"[Error] The hexadecimal\
       \ parsing of the PDU failed, please ensure that the number of bytes is a multiple\
-      \ of 2\")\n            return \"\"\n        LL_Data = self.add_crc_sum(self.add_accadddr(payload,accaddr),crcinit)\n\
-      \        PHY_Data = self.data_whitening(self.channel,LL_Data)\n        if DEBUG:\n\
-      \            print (\"CH : \" + str(self.channel))\n            print (\"LL\
-      \ Data Before Whitening : \" + LL_Data)\n            print (\"PHY Data After\
-      \ Whitening : \" + PHY_Data)\n        return PHY_Data\n\n\n    '''\n    Use\
-      \ 0xaa or 0x55 as Preamble according to the lowest bit of AccessAddress\n  \
-      \  '''\n    # Attention : Using After add_accadddr() !\n    def add_preamble(self,payload,low_bit\
-      \ = 0):\n        #PREAMBLE=\"01010101\" # 0xaa reverse\n        #PREAMBLE2=\"\
-      10101010\" # 0x55 reverse\n        if low_bit == 0 :\n            PREAMBLE_HEX\
-      \ = \"aa\"\n        elif low_bit == 1:\n            PREAMBLE_HEX = \"55\"\n\
-      \        else:\n            return False\n        return PREAMBLE_HEX + payload\
-      \ \n\n    '''\n    Add AccessAddress and Preamble to the header for the PDU\
-      \ packet\n    '''\n    def add_accadddr(self,payload,accaddr = 0x8E89BED6):\n\
-      \        #Broadcast = \"01101011011111011001000101110001\" # 0x8E89BED6\n  \
-      \      accaddr_list = list(hex(accaddr)[2:])\n        accaddr_hex = \"\"\n \
-      \       for i in range(0,int(len(accaddr_list)/2)):\n            accaddr_hex+=accaddr_list[int(len(accaddr_list))-i*2-2]+accaddr_list[int(len(accaddr_list))-i*2-1]\n\
+      \ of 2\")\n            return \"\"\n        if payload == \"E7\":\n        \
+      \    self.empty_flag = True\n        LL_Data = self.add_crc_sum(self.add_accadddr(payload,accaddr),crcinit)\n\
+      \        PHY_Data = self.data_whitening(self.channel,LL_Data)\n        if DEBUG\
+      \ and payload != \"E7\": # \"E7\" -> EMPTY FLAG\n            print (\"CH : \"\
+      \ + str(self.channel))\n            print (\"LL Data Before Whitening : \" +\
+      \ LL_Data)\n            print (\"PHY Data After Whitening : \" + PHY_Data)\n\
+      \        return PHY_Data\n\n\n    '''\n    Use 0xaa or 0x55 as Preamble according\
+      \ to the lowest bit of AccessAddress\n    '''\n    # Attention : Using After\
+      \ add_accadddr() !\n    def add_preamble(self,payload,low_bit = 0):\n      \
+      \  #PREAMBLE=\"01010101\" # 0xaa reverse\n        #PREAMBLE2=\"10101010\" #\
+      \ 0x55 reverse\n        if low_bit == 0 :\n            PREAMBLE_HEX = \"aa\"\
+      \n        elif low_bit == 1:\n            PREAMBLE_HEX = \"55\"\n        else:\n\
+      \            return False\n        return PREAMBLE_HEX + payload \n\n    '''\n\
+      \    Add AccessAddress and Preamble to the header for the PDU packet\n    '''\n\
+      \    def add_accadddr(self,payload,accaddr = 0x8E89BED6):\n        #Broadcast\
+      \ = \"01101011011111011001000101110001\" # 0x8E89BED6\n        accaddr_list\
+      \ = list(hex(accaddr)[2:])\n        accaddr_hex = \"\"\n        for i in range(0,int(len(accaddr_list)/2)):\n\
+      \            accaddr_hex+=accaddr_list[int(len(accaddr_list))-i*2-2]+accaddr_list[int(len(accaddr_list))-i*2-1]\n\
       \        payload = accaddr_hex+payload\n        if int(bin(int(hex(accaddr)[-2:],16))[-1:])\
       \ == 0:\n            return self.add_preamble(payload,0)    \n        return\
       \ self.add_preamble(payload,1)\n\n\n    '''\n    Calculate the CRC of the entire\
@@ -202,8 +207,10 @@ blocks:
       \        ''' Usage:\n            source  = \"aad6be898e0011727919bebae70201050702031802180418\"\
       \ #d1a136\n            source = self.add_crc_sum(source)\n            print(source)\n\
       \        '''\n        crc24 = self.PDU_CRC_CAL(payload[10:],crcinit=crcinit,reverse=False)\
-      \ # Cut Preamble && AccAddr\n        payload += self.bit2str(bin(crc24)[2:])\n\
-      \        return payload\n\n    '''\n    For whitening the entire PDU, Channle\
+      \ # Cut Preamble && AccAddr\n        if crc24 == 0: #The CRC check is 0, indicating\
+      \ that the PDU we obtained contains CRC at the end.\n            return payload\n\
+      \        payload += self.bit2str(bin(crc24)[2:]).zfill(6) # crc bug fix\n  \
+      \      return payload\n\n    '''\n    For whitening the entire PDU, Channle\
       \ is required as ca. \n    Note that Preamble and AccessAddress are added before\
       \ whitening.\n    '''\n    def data_whitening(self,channel,payload):\n     \
       \   source_bits = self.str2bits2(payload)\n        ret = self.bit2str(self.whitening(channel,source_bits))\n\
